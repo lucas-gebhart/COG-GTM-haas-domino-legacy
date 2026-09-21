@@ -77,11 +77,11 @@ Roles (10): `[TACOM]`, `[DLA]`, `[Vendor]`, `[CSR]`, `[Engraver]`, `[Assembler]`
 | Scheduled agents | 2 |
 | Agent LoC | 363 |
 | Script libraries | 5 |
-| Library LoC | 668 |
+| Library LoC | 701 |
 | XPages | 7 |
 | Custom controls | 2 |
-| XPage controls | 504 |
-| SSJS lines | 198 |
+| XPage controls | 506 |
+| SSJS lines | 203 |
 
 ### Forms
 
@@ -456,7 +456,7 @@ Source: `views/StatusInquiry.dxl` · Lookup view behind StatusInquiry.xsp and HA
 | --- | --- | --- | --- | --- |
 | HAASCommon | LotusScript | 175 | 11 | `scriptlibs/HAASCommon.lss` |
 | HAASMail | LotusScript | 141 | 5 | `scriptlibs/HAASMail.lss` |
-| HAASRequest | Server JavaScript | 116 | 14 | `scriptlibs/HAASRequest.jss` |
+| HAASRequest | Server JavaScript | 149 | 15 | `scriptlibs/HAASRequest.jss` |
 | HAASStatus | Server JavaScript | 103 | 6 | `scriptlibs/HAASStatus.jss` |
 | HAASValidation | LotusScript | 133 | 8 | `scriptlibs/HAASValidation.lss` |
 
@@ -466,7 +466,7 @@ Source: `views/StatusInquiry.dxl` · Lookup view behind StatusInquiry.xsp and HA
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HeraldryHome | Heraldry Automation System - Home | xpage | dominoView:RequestsByStatus | 54 | 0 | 0 | 5 | 5 | ccLayout |
 | Login | Heraldry Automation System - Sign In | xpage | — | 21 | 2 | 1 | 0 | 0 | ccLayout |
-| ModifyRequest | Modify / Cancel Heraldry Request | xpage | dominoDocument:Request | 100 | 5 | 5 | 31 | 59 | ccLayout |
+| ModifyRequest | Modify / Cancel Heraldry Request | xpage | dominoDocument:Request | 102 | 6 | 6 | 34 | 64 | ccLayout |
 | Request | New DD1348-6 Heraldry Request | xpage | dominoDocument:Request | 103 | 18 | 2 | 5 | 60 | ccLayout |
 | SESFlag | SES Flag Request | xpage | dominoDocument:SESFlagRequest, dominoView:SESFlagQueue | 83 | 11 | 1 | 1 | 25 | ccLayout |
 | StatusInquiry | Heraldry Request Status Inquiry | xpage | — | 53 | 1 | 1 | 17 | 17 | ccLayout |
@@ -1033,16 +1033,16 @@ Source: `views/WarehousePick.dxl` · Warehouse pick list: cases awaiting pick/pa
 | Control | Occurrences |
 | --- | --- |
 | `xp:td` | 160 |
-| `xp:text` | 97 |
+| `xp:text` | 96 |
 | `xp:label` | 69 |
 | `xp:tr` | 57 |
 | `xp:panel` | 43 |
 | `xp:viewColumn` | 41 |
 | `xp:viewColumnHeader` | 41 |
 | `xp:link` | 40 |
-| `xp:inputText` | 27 |
-| `xp:eventHandler` | 25 |
-| `xp:button` | 24 |
+| `xp:inputText` | 28 |
+| `xp:eventHandler` | 26 |
+| `xp:button` | 25 |
 | `xp:selectItem` | 20 |
 | `xp:table` | 17 |
 | `xp:br` | 13 |
@@ -1089,17 +1089,17 @@ Source: `views/WarehousePick.dxl` · Warehouse pick list: cases awaiting pick/pa
 | Scheduled agents | 2 | 4 | 6 |
 | Agent LoC | 363 | 939 | 1302 |
 | Script libraries | 5 | 3 | 8 |
-| Library LoC | 668 | 599 | 1267 |
+| Library LoC | 701 | 599 | 1300 |
 | XPages | 7 | 3 | 10 |
 | Custom controls | 2 | 2 | 4 |
-| XPage controls | 504 | 284 | 788 |
-| SSJS lines | 198 | 132 | 330 |
+| XPage controls | 506 | 284 | 790 |
+| SSJS lines | 203 | 132 | 335 |
 
 ## Migration notes
 
 - 76 field validation formulas and 29 input translation formulas must be ported to the target validation layer (Domino evaluates them field-by-field on save; the 93 computed fields become derived attributes or persistence hooks).
-- 6 scheduled agents replace with jobs or queue consumers: heraldry.nsf/RebuildStatusInquiryIndex, heraldry.nsf/SendStatusMail, vetmedals.nsf/ArchiveClosedCases, vetmedals.nsf/ImportAuthorizationFile, vetmedals.nsf/NightlyAging, vetmedals.nsf/SendStatusMail. 1302 lines of agent LotusScript and 1267 lines of script-library code (LotusScript and Server JavaScript) are candidates for service extraction.
+- 6 scheduled agents replace with jobs or queue consumers: heraldry.nsf/RebuildStatusInquiryIndex, heraldry.nsf/SendStatusMail, vetmedals.nsf/ArchiveClosedCases, vetmedals.nsf/ImportAuthorizationFile, vetmedals.nsf/NightlyAging, vetmedals.nsf/SendStatusMail. 1302 lines of agent LotusScript and 1300 lines of script-library code (LotusScript and Server JavaScript) are candidates for service extraction.
 - 6 hidden lookup views (names starting with "(") back @DbLookup/@DbColumn calls and embedded views; each becomes a query or index in the target store: heraldry.nsf/($All), heraldry.nsf/($Lookups), vetmedals.nsf/($All), vetmedals.nsf/($AuthFiles), vetmedals.nsf/($Lookups), vetmedals.nsf/(CaseLines).
 - 8 keyword fields accept free-text values (allowNew): heraldry.nsf/Request.Status, heraldry.nsf/Request.VendorKey, heraldry.nsf/Requester.Role, heraldry.nsf/RequestLine.ItemKey, heraldry.nsf/RequestLine.LineStatus, heraldry.nsf/SESFlagRequest.Status, heraldry.nsf/SESFlagRequest.VendorKey, heraldry.nsf/sfRequesterPOC.RequesterRank. Their reference data needs a de-duplication pass before it can become a constrained lookup table.
 - 11 forms carry Readers fields and rely on document-level Domino security: heraldry.nsf/Request (DocReaders); heraldry.nsf/RequestLine (DocReaders); heraldry.nsf/SESFlagRequest (DocReaders); heraldry.nsf/Vendor (DocReaders); vetmedals.nsf/AuthorizationFile (DocReaders); vetmedals.nsf/AwardLine (DocReaders); vetmedals.nsf/AwardsCase (DocReaders); vetmedals.nsf/CaseNote (DocReaders); vetmedals.nsf/EngravingJob (DocReaders); vetmedals.nsf/Requester (DocReaders); vetmedals.nsf/ShipmentRecord (DocReaders). Row-level authorization must be reproduced explicitly in the target application.
-- 330 lines of Server JavaScript across 10 XPages and 4 custom controls hold the web presentation logic that the new front end replaces.
+- 335 lines of Server JavaScript across 10 XPages and 4 custom controls hold the web presentation logic that the new front end replaces.

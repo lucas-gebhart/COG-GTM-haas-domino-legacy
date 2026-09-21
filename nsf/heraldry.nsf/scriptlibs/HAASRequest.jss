@@ -122,6 +122,40 @@ var HAASRequest = {
 		return rq.getUniversalID();
 	},
 
+	/**
+	 * ModifyRequest.xsp line edit: only Quantity may change on an existing RequestLine, and only while the
+	 * parent is still editable. Re-extends the line, then re-sums TotalValue on the parent (the Request has no
+	 * computed total - see README-design.md "denormalized totals").
+	 */
+	updateLineQuantity: function (reqDoc, lineDoc, qty) {
+		if (HAASStatus.isReleased(reqDoc)) { return { error: HAASStatus.MSG_RELEASED_NOMODIFY }; }
+		if (lineDoc.getParentDocumentUNID() !== reqDoc.getUniversalID()) { return { error: "The line item does not belong to this request." }; }
+		var catalog = database.getView("HeraldicCatalog");
+		var item = catalog.getDocumentByKey(lineDoc.getItemValueString("ItemKey"), true);
+		var catalogItem = item === null ? null : { MaxQtyPerRequest: item.getItemValueInteger("MaxQtyPerRequest") };
+		var errors = this.validateLine({ NSN: lineDoc.getItemValueString("NSN"), ExceptionData: lineDoc.getItemValueString("ExceptionData"), UnitOfIssue: lineDoc.getItemValueString("UnitOfIssue"), Quantity: qty }, catalogItem);
+		if (errors.length > 0) { return { error: errors.join(" ") }; }
+		var before = lineDoc.getItemValueInteger("Quantity");
+		var unitPrice = lineDoc.getItemValueDouble("UnitPrice");
+		lineDoc.replaceItemValue("Quantity", Number(qty));
+		lineDoc.replaceItemValue("ExtendedPrice", Math.round(Number(qty) * unitPrice * 100) / 100);
+		lineDoc.save(true, false);
+		var total = 0;
+		var lines = reqDoc.getResponses();
+		var l = lines.getFirstDocument();
+		while (l !== null) {
+			total += l.getItemValueDouble("ExtendedPrice");
+			l = lines.getNextDocument(l);
+		}
+		reqDoc.replaceItemValue("TotalValue", Math.round(total * 100) / 100);
+		reqDoc.replaceItemValue("LastModifiedBy", context.getUser().getDistinguishedName());
+		reqDoc.replaceItemValue("LastModifiedDate", session.createDateTime(new Date()));
+		var hist = reqDoc.getFirstItem("StatusHistory");
+		hist.appendToTextList(I18n.toString(new Date(), "MM/dd/yyyy hh:mm a") + " line " + lineDoc.getItemValueString("LineNumber") + " quantity " + before + " -> " + qty + " by " + context.getUser().getCommonName());
+		reqDoc.save(true, false);
+		return { ok: true };
+	},
+
 	/** Domino-style status block after a change: writes sessionScope for ccStatusBanner. */
 	flash: function (msg) { sessionScope.haasMessage = msg; },
 	fail: function (msg) { sessionScope.haasError = msg; }

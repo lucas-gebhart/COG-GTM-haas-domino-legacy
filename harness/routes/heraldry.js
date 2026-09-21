@@ -219,7 +219,7 @@ ${H.button('Find Request')}
   return page(ctx, { title: 'Modify / Cancel Request', content });
 }
 
-function modifyForm(ctx, doc, values, errors) {
+function modifyForm(ctx, doc, values, errors, notice) {
   const db = ctx.app.store.db(DB);
   const design = ctx.app.designs[DB];
   const form = D.findForm(design, 'Request');
@@ -238,7 +238,9 @@ function modifyForm(ctx, doc, values, errors) {
     return { cells: r.cells.map(cell) };
   });
   const lines = db.responses(doc.unid, 'RequestLine');
+  const qtyCell = (l) => `<form method="post" action="/heraldry.nsf/0/${H.attr(l.unid)}?UpdateLine" class="inlineForm dominoForm lineQtyForm">${H.input('Quantity', l.items.Quantity, { size: 4, maxlength: 6 })} ${H.button('Update', { className: 'xspButtonCommand smallButton' })}</form>`;
   const content = `
+${notice ? H.infoBlock(notice) : ''}
 ${H.errorBlock(errors, 'The request could not be saved:')}
 <div class="docHeader"><b>${H.esc(A.text(doc, 'DocumentNumber'))}</b> &nbsp; ${statusChip(A.text(doc, 'Status'))} &nbsp; <span class="muted">Entered ${H.esc(H.fmtValue(doc.items.EnteredDate))} by ${H.esc(A.commonName(A.text(doc, 'EnteredBy')))}</span></div>
 <form method="post" action="/heraldry.nsf/ModifyRequest.xsp?documentId=${H.attr(doc.unid)}&amp;action=save" class="dominoForm" autocomplete="off">
@@ -246,8 +248,9 @@ ${H.fieldTable(rows)}
 <div class="formButtons">${H.button('Save Changes')} ${H.linkButton(`/heraldry.nsf/0/${doc.unid}?OpenDocument`, 'Close')}</div>
 </form>
 <h3>Line items (${lines.length})</h3>
+<p class="muted">Line quantities may be changed until the request is released to the vendor; per-item limits from the <code>HeraldicCatalog</code> view are enforced. To add or remove a line, cancel and resubmit the requisition.</p>
 ${D.responsesTable(DB, lines, [
-    { title: 'Line', item: 'LineDocNumber' }, { title: 'NSN / Item', render: (l) => H.esc(A.text(l, 'NSN') || A.text(l, 'ItemKey')) }, { title: 'Description', item: 'ItemDescription' }, { title: 'Exception Data', item: 'ExceptionData' }, { title: 'U/I', item: 'UnitOfIssue' }, { title: 'Qty', item: 'Quantity' }, { title: 'Unit Price', render: (l) => H.esc(H.money(l.items.UnitPrice)) }, { title: 'Extended', render: (l) => H.esc(H.money(l.items.ExtendedPrice)) }, { title: 'Line Status', item: 'LineStatus' },
+    { title: 'Line', item: 'LineDocNumber' }, { title: 'NSN / Item', render: (l) => H.esc(A.text(l, 'NSN') || A.text(l, 'ItemKey')) }, { title: 'Description', item: 'ItemDescription' }, { title: 'Exception Data', item: 'ExceptionData' }, { title: 'U/I', item: 'UnitOfIssue' }, { title: 'Qty', render: qtyCell }, { title: 'Unit Price', render: (l) => H.esc(H.money(l.items.UnitPrice)) }, { title: 'Extended', render: (l) => H.esc(H.money(l.items.ExtendedPrice)) }, { title: 'Line Status', item: 'LineStatus' },
   ])}
 <h3>Cancel this request</h3>
 <form method="post" action="/heraldry.nsf/0/${H.attr(doc.unid)}?CancelRequest" class="dominoForm inlineForm">
@@ -293,7 +296,29 @@ router.get((ctx) => ctx.pathname === '/heraldry.nsf/ModifyRequest.xsp', (ctx) =>
     ctx.app.audit.write('authorization_failure', { user: ctx.user.name, ip: ctx.ip, db: DB, unid: doc.unid, action: 'modify', reason: 'released_to_vendor' });
     return blockedPage(ctx, doc, [A.MSG_RELEASED_NOMODIFY]);
   }
-  return modifyForm(ctx, doc, { ...doc.items }, []);
+  const notice = ctx.query.LineSaved ? `Line ${cleanCode(ctx.query.LineSaved, 4)} quantity updated; request total re-extended.` : '';
+  return modifyForm(ctx, doc, { ...doc.items }, [], notice);
+});
+
+router.post((ctx) => splitDbPath(ctx.pathname) && splitDbPath(ctx.pathname).db === DB && /^0\/[A-Fa-f0-9]{32}$/.test(splitDbPath(ctx.pathname).rest) && ctx.query.UpdateLine === '', (ctx) => {
+  requireLogin(ctx);
+  const db = ctx.app.store.db(DB);
+  const line = docFromPath(ctx);
+  const doc = line && line.form === 'RequestLine' ? db.get(line.parent) : null;
+  if (!doc || doc.form !== 'Request') {
+    throw new A.AppError('Request line not found', 404);
+  }
+  const r = A.modifyRequestLine(actx(ctx), doc, line, cleanCode(ctx.body.Quantity, 6));
+  if (!r.ok && r.blocked) {
+    ctx.app.audit.write('authorization_failure', { user: ctx.user.name, ip: ctx.ip, db: DB, unid: doc.unid, action: 'modify_line', reason: 'released_or_cancelled' });
+    return blockedPage(ctx, doc, r.errors);
+  }
+  if (!r.ok) {
+    ctx.res.statusCode = 400;
+    return modifyForm(ctx, doc, { ...doc.items }, r.errors);
+  }
+  ctx.app.audit.write('document_modify', { user: ctx.user.name, ip: ctx.ip, db: DB, form: 'RequestLine', unid: line.unid, parent: doc.unid, documentNumber: A.text(doc, 'DocumentNumber'), changed: ['Quantity'], before: r.before, after: r.after });
+  return ctx.redirect(`/heraldry.nsf/ModifyRequest.xsp?documentId=${doc.unid}&LineSaved=${encodeURIComponent(A.text(line, 'LineNumber'))}`, 303);
 });
 
 router.post((ctx) => ctx.pathname === '/heraldry.nsf/ModifyRequest.xsp', (ctx) => {
@@ -506,7 +531,7 @@ function statusInquiryPage(ctx, params) {
   const num = cleanCode(params.DocumentNumber, 20);
   const dodaac = cleanCode(params.DODAAC, 6);
   let resultHtml = '';
-  if (num) {
+  if (num || dodaac || ctx.method === 'POST') {
     const r = A.statusInquiry(db, num, dodaac);
     ctx.app.audit.write('status_inquiry', { user: ctx.user.name, ip: ctx.ip, db: DB, documentNumber: num, dodaac, found: r.ok ? r.hits.length : 0 });
     if (!r.ok) {

@@ -40,6 +40,8 @@ body.xspView.tundra { background: #ffffff; }
 .xspButtonCommand:hover { background: #ececec; border-color: #6c8bc9; }
 .xspButtonCommand:active { background: #d0d0d0; }
 .xspButtonCommand.primaryButton { font-weight: bold; border-color: #4a6ea9; }
+.xspButtonCommand.smallButton { font-size: 10px; padding: 1px 6px; }
+.lineQtyForm input { width: 3.5em; text-align: right; }
 
 .xspMessage, .xspMessageInfo {
   font-family: Verdana, Arial, Helvetica, sans-serif;

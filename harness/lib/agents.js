@@ -326,6 +326,47 @@ function modifyRequest(ctx, doc, values) {
   return { ok: true, doc, changed: Object.keys(changed) };
 }
 
+/** ModifyRequest.xsp line edit: quantity only, blocked once released; re-extends the line and the parent TotalValue. */
+function modifyRequestLine(ctx, doc, line, quantity) {
+  const { design, db, engine, user, now } = ctx;
+  if (text(doc, 'Status') === STATUS.CANCELLED) {
+    return { ok: false, errors: [MSG_CANCELLED], blocked: true };
+  }
+  if (isReleased(db, doc)) {
+    return { ok: false, errors: [MSG_RELEASED_NOMODIFY], blocked: true };
+  }
+  if (!line || line.form !== 'RequestLine' || line.parent !== doc.unid) {
+    return { ok: false, errors: ['The line item does not belong to this request.'] };
+  }
+  const form = findForm(design, 'RequestLine');
+  const draft = { unid: line.unid, items: { ...line.items, Quantity: quantity } };
+  const r = computeWithForm(engine, form, draft, {
+    isNew: false,
+    userName: user.name,
+    roles: user.roles,
+    only: ['Quantity'],
+    skipComputed: form.fields.filter((f) => f.name !== 'ExtendedPrice').map((f) => f.name),
+  });
+  if (!r.ok) {
+    return { ok: false, errors: r.errors };
+  }
+  const before = Number(line.items.Quantity) || 0;
+  const after = Number(draft.items.Quantity) || 0;
+  db.update(line, {
+    Quantity: after,
+    ExtendedPrice: Number(draft.items.ExtendedPrice) || 0,
+  }, { user: user.name, clock: () => now });
+  const total = db.responses(doc.unid, 'RequestLine').reduce((sum, l) => sum + (Number(l.items.ExtendedPrice) || 0), 0);
+  const from = text(doc, 'Status');
+  db.update(doc, {
+    TotalValue: Number(total.toFixed(2)),
+    LastModifiedBy: user.name,
+    LastModifiedDate: isoNow(now),
+    StatusHistory: appendStatusHistory(doc, from, `${from} (modified: line ${text(line, 'LineNumber') || '?'} quantity ${before} -> ${after})`, user.name, now),
+  }, { user: user.name, clock: () => now });
+  return { ok: true, doc, line, before, after };
+}
+
 /** ReleaseToVendor.lss ReleaseOne() */
 function releaseToVendor(ctx, doc, vendorKey) {
   const { db, user, now } = ctx;
@@ -1189,6 +1230,7 @@ function importAuthorizationFile(ctx, fileName, content, opts = {}) {
 }
 
 module.exports = {
+  modifyRequestLine,
   AppError,
   STATUS,
   STAGE,

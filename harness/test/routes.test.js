@@ -365,6 +365,22 @@ test('modify -> status inquiry -> release to vendor -> modify/cancel blocked wit
   const badMod = await s4.post(`/heraldry.nsf/ModifyRequest.xsp?documentId=${unid}`, { RPD: '42' });
   assert.equal(badMod.status, 400);
 
+  const lineUnid = db.responses(unid, 'RequestLine')[0].unid;
+  const modifyPage0 = await s4.get(`/heraldry.nsf/ModifyRequest.xsp?documentId=${unid}`);
+  assert.match(modifyPage0.text, new RegExp(`/heraldry\\.nsf/0/${lineUnid}\\?UpdateLine`), 'line quantities are editable on ModifyRequest.xsp');
+  const qty = await s4.request(`/heraldry.nsf/0/${lineUnid}?UpdateLine`, { method: 'POST', form: { Quantity: '3' }, follow: false });
+  assert.equal(qty.status, 303, qty.text.slice(0, 300));
+  assert.match(qty.location, /ModifyRequest\.xsp\?documentId=.*&LineSaved=1$/);
+  assert.equal(Number(db.get(lineUnid).items.Quantity), 3);
+  assert.equal(Number(db.get(lineUnid).items.ExtendedPrice), 193.71, 'ExtendedPrice re-extended by the @Round formula');
+  assert.equal(Number(db.get(unid).items.TotalValue), 193.71, 'parent TotalValue follows the line');
+  const qtyOver = await s4.post(`/heraldry.nsf/0/${lineUnid}?UpdateLine`, { Quantity: '9999' });
+  assert.equal(qtyOver.status, 400);
+  assert.match(qtyOver.text, /Quantity/);
+  assert.equal(Number(db.get(lineUnid).items.Quantity), 3, 'over-limit quantity rejected');
+  const qtyBad = await s4.post(`/heraldry.nsf/0/${lineUnid}?UpdateLine`, { Quantity: 'abc' });
+  assert.equal(qtyBad.status, 400);
+
   const found = await anon.post('/heraldry.nsf/StatusInquiry.xsp', { DocumentNumber: docNo, DODAAC: 'W45XYZ' });
   assert.equal(found.status, 200);
   assert.match(found.text, new RegExp(docNo));
@@ -373,6 +389,8 @@ test('modify -> status inquiry -> release to vendor -> modify/cancel blocked wit
   const missing = await anon.post('/heraldry.nsf/StatusInquiry.xsp', { DocumentNumber: 'W45XYZ00000000', DODAAC: '' });
   assert.equal(missing.status, 200);
   assert.match(missing.text, /No request was found/);
+  const dodaacOnly = await anon.post('/heraldry.nsf/StatusInquiry.xsp', { DocumentNumber: '', DODAAC: 'W45XYZ' });
+  assert.match(dodaacOnly.text, /Enter a document number/, 'submitting without a document number explains what is required');
   const byGet = await anon.get(`/heraldry.nsf/StatusInquiry.xsp?DocumentNumber=${docNo}`);
   assert.match(byGet.text, new RegExp(docNo));
 
@@ -386,6 +404,11 @@ test('modify -> status inquiry -> release to vendor -> modify/cancel blocked wit
   assert.equal(A.text(db.get(unid), 'Status'), A.STATUS.RELEASED);
   const released = await tacom.get(rel.location);
   assert.match(released.text, /released to/i);
+
+  const lineBlocked = await s4.post(`/heraldry.nsf/0/${lineUnid}?UpdateLine`, { Quantity: '4' });
+  assert.equal(lineBlocked.status, 403);
+  assert.ok(lineBlocked.text.includes('Error 4091'));
+  assert.equal(Number(db.get(lineUnid).items.Quantity), 3, 'line locked after release');
 
   const blocked = await s4.post(`/heraldry.nsf/ModifyRequest.xsp?documentId=${unid}`, { Justification: 'too late' });
   assert.ok([200, 403].includes(blocked.status));

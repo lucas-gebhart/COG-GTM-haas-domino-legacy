@@ -94,7 +94,17 @@ context.redirectToPage("/ModifyRequest.xsp?documentId=" + r.unid);}]]></xp:this.
 						<xp:column><xp:this.facets><xp:text xp:key="header" value="Line" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueString('LineDocNumber')}" /></xp:column>
 						<xp:column><xp:this.facets><xp:text xp:key="header" value="NSN / Exception" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueString('NSN') || line.getItemValueString('ExceptionData')}" /></xp:column>
 						<xp:column><xp:this.facets><xp:text xp:key="header" value="Description" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueString('ItemDescription')}" /></xp:column>
-						<xp:column styleClass="haasNum"><xp:this.facets><xp:text xp:key="header" value="Qty" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueInteger('Quantity')}" /></xp:column>
+						<xp:column styleClass="haasNum"><xp:this.facets><xp:text xp:key="header" value="Qty" /></xp:this.facets>
+							<xp:inputText id="lineQty" value="#{javascript:line.getItemValueInteger('Quantity')}" size="4" maxlength="6" styleClass="haasInput haasNum" readonly="#{javascript:HAASStatus.isReleased(reqDoc.getDocument())}" />
+							<xp:button id="btnUpdateLine" value="Update" styleClass="haasButton haasButtonSmall" rendered="#{javascript:!HAASStatus.isReleased(reqDoc.getDocument())}">
+								<xp:eventHandler event="onclick" submit="true" refreshMode="partial" refreshId="tblLines">
+									<xp:this.action><![CDATA[#{javascript:
+var r = HAASRequest.updateLineQuantity(reqDoc.getDocument(), line, getComponent('lineQty').getValue());
+if (r.error) { HAASRequest.fail(r.error); return; }
+HAASRequest.flash('Line ' + line.getItemValueString('LineNumber') + ' quantity updated; request total re-extended.');}]]></xp:this.action>
+								</xp:eventHandler>
+							</xp:button>
+						</xp:column>
 						<xp:column><xp:this.facets><xp:text xp:key="header" value="U/I" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueString('UnitOfIssue')}" /></xp:column>
 						<xp:column styleClass="haasNum"><xp:this.facets><xp:text xp:key="header" value="Ext. Price" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueDouble('ExtendedPrice')}"><xp:this.converter><xp:convertNumber type="currency" currencySymbol="$" /></xp:this.converter></xp:text></xp:column>
 						<xp:column><xp:this.facets><xp:text xp:key="header" value="Line Status" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueString('LineStatus')}" /></xp:column>
