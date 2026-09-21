@@ -122,11 +122,11 @@ function errorBlock(messages, title) {
 <b>${esc(title || 'Form processing error')}</b><ul>${messages.map((m) => `<li>${esc(m)}</li>`).join('')}</ul></td></tr></table></div>`;
 }
 
-function infoBlock(message) {
+function infoBlock(message, opts = {}) {
   if (!message) {
     return '';
   }
-  return `<div class="xspMessage xspMessageInfo"><table class="dominoInfo" border="0" cellpadding="4"><tr><td class="infoIcon">&#8505;</td><td>${esc(message)}</td></tr></table></div>`;
+  return `<div class="xspMessage xspMessageInfo"><table class="dominoInfo" border="0" cellpadding="4"><tr><td class="infoIcon">&#8505;</td><td>${opts.raw ? message : esc(message)}</td></tr></table></div>`;
 }
 
 function fieldTable(rows) {
@@ -196,12 +196,12 @@ function page(opts) {
 <div id="dominoMenu"><a href="/heraldry.nsf/HeraldryHome.xsp">Heraldry</a> | <a href="/vetmedals.nsf/CasesByStage?OpenView">Veteran Medals</a> | <a href="/design">Design</a> | <a href="/agents">Agents</a> | <a href="/names.nsf?Login">Login</a></div>
 <table id="dominoBody" width="100%" border="0" cellspacing="0" cellpadding="0"><tr>
 <td id="dominoNav" valign="top">${navHtml}</td>
-<td id="dominoContent" valign="top">
+<td id="dominoContent" valign="top"><div id="dominoContentInner">
 ${breadcrumb ? `<div class="breadcrumb">${breadcrumb.map((b, i) => (i < breadcrumb.length - 1 && b.href ? `<a href="${attr(b.href)}">${esc(b.label)}</a>` : `<span>${esc(b.label)}</span>`)).join(' &raquo; ')}</div>` : ''}
 ${actionBar}
 <h1 class="pageTitle">${esc(title)}</h1>
 ${content}
-</td></tr></table>
+</div></td></tr></table>
 <div id="dominoFooter">Heraldry &amp; Awards Automation System &middot; Domino 9.0.1 FP10 / XPages &middot; For Official Use Only (synthetic data) &middot; <a href="/design">Design inventory</a></div>
 <script src="/twisty.js"></script>
 </body>

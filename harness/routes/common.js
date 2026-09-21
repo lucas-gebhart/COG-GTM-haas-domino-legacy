@@ -131,7 +131,7 @@ router.get((ctx) => {
   }
   ctx.app.audit.write('attachment_read', { user: ctx.user.name, ip: ctx.ip, db: p.db, unid: doc.unid, file: file.name });
   const content = `
-${H.infoBlock(`The DXL export records this <code>$FILE</code> item (${H.esc(file.name)}, ${file.size.toLocaleString()} bytes) on the document, but attachment bytes are not part of the design/data export the migration team received. On the production server this URL streams the file from the document's <code>$FILE</code> item.`)}
+${H.infoBlock(`The DXL export records this <code>$FILE</code> item (${H.esc(file.name)}, ${file.size.toLocaleString()} bytes) on the document, but attachment bytes are not part of the design/data export the migration team received. On the production server this URL streams the file from the document's <code>$FILE</code> item.`, { raw: true })}
 <table class="dominoView" border="1" cellpadding="4" cellspacing="0">
 <tr><th>Attachment</th><td>${H.esc(file.name)}</td></tr>
 <tr><th>Size</th><td>${file.size.toLocaleString()} bytes</td></tr>

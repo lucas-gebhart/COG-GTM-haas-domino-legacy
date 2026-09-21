@@ -75,7 +75,7 @@ pre { font-family: "Courier New", Courier, monospace; font-size: 11px; backgroun
 #dominoMenu a:hover { text-decoration: underline; }
 
 /* ---------- body layout ---------- */
-#dominoBody { border-collapse: collapse; }
+#dominoBody { border-collapse: collapse; table-layout: fixed; }
 #dominoNav {
   width: 170px;
   background: #eef2f9;
@@ -88,6 +88,7 @@ pre { font-family: "Courier New", Courier, monospace; font-size: 11px; backgroun
 #dominoNav .navLink:hover { background: #dfe6f3; text-decoration: underline; }
 #dominoNav .navCurrent { background: #4a6ea9; color: #ffffff; font-weight: bold; }
 #dominoContent { padding: 6px 12px 20px 12px; }
+#dominoContentInner { overflow-x: auto; }
 #dominoFooter {
   border-top: 1px solid #99aacc;
   background: #eef2f9;
@@ -319,7 +320,10 @@ a.twisty {
 
 /* ---------- agents ---------- */
 .agentForm { border: 1px solid #99aacc; background: #f6f8fc; padding: 8px; margin: 6px 0; }
-.agentLog { font-family: "Courier New", Courier, monospace; font-size: 11px; background: #000000; color: #c0c0c0; padding: 8px; max-height: 420px; overflow: auto; white-space: pre-wrap; }
+.agentLog { font-family: "Courier New", Courier, monospace; font-size: 11px; background: #000000; color: #e6e6e6; padding: 8px; max-height: 420px; overflow: auto; white-space: pre-wrap; }
+.agentLog h2 { color: #ffffff; font-size: 12px; margin: 0 0 6px; }
+.agentLog pre { background: transparent; border: 0; color: #e6e6e6; padding: 0; margin: 0; }
+.agentLog a { color: #9cc3ff; }
 
 @media print {
   #harnessBanner, #dominoMenu, #dominoNav, .actionBar, .formButtons { display: none; }
