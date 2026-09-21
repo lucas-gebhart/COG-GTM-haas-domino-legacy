@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='Requester' alias='frmRequester|NOK' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ hide='web' bgcolor='white' noreplace='false' renderpassthrough='true'>
+<noteinfo noteid='126' unid='4D9A1E63F8BA6C2585258A1F00305D71' sequence='61'>
+<created><datetime>20040301T110000,00-05</datetime></created>
+<modified><datetime>20190614T142233,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Lorraine Whitcombe/OU=CHPSID/O=TACOM</name></updatedby>
+<!--
+  Requester (vetmedals.nsf) - the person receiving the awards: the veteran (Relationship=Self) or
+  next of kin. ALL PII IN THIS EXPORT IS SYNTHETIC.
+  Known wart: ImportAuthorizationFile dedupes on LookupKey = UpperCase(LastName)+"|"+UpperCase(FirstName)+"|"+ZIP.
+  Address changes, hyphenated names and "Jr." suffixes therefore produce duplicate Requester documents
+  (~8% of the population). CaseView.xsp shows a "possible duplicate" warning when >1 doc share a key.
+-->
+<code event='windowtitle'><formula>"Requester: " + LastName + ", " + FirstName + @If(Relationship = "Self"; " (veteran)"; " (" + Relationship + ")")</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'><code event='hidewhen'><formula>!@IsMember("[CSR]":"[TACOM]":"[Admin]"; @UserRoles)</formula></code><code event='click'><formula>@Command([EditDocument])</formula></code></action>
+<action title='Show Cases' icon='6'><code event='click'><formula>@Command([OpenView]; "CSRLookup"; LookupKey)</formula></code></action>
+<action title='Merge Duplicate...' icon='87'><code event='hidewhen'><formula>!@IsMember("[Admin]"; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; "(MergeRequester)")</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='12pt' style='bold' name='Verdana' color='navy'/>Veteran / Next-of-Kin Requester</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='30%'/><tablecolumn width='70%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Requester ID</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computedwhencomposed' name='RequesterID'><code event='value'><formula>@If(RequesterID != ""; RequesterID; "RQ" + @Right(@Text(@Year(@Now)); 2) + @Right("000000" + @Text(@GetProfileField("Profile"; "NextRequesterSerial")); 6))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Last Name</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='LastName'><code event='inputtranslation'><formula>@Trim(LastName)</formula></code><code event='inputvalidation'><formula>@If(@Trim(LastName) = ""; @Failure("Last name is required."); @Length(LastName) &gt; 60; @Failure("Last name may not exceed 60 characters."); @Success)</formula></code></field><run> suffix </run><field type='text' kind='editable' name='Suffix'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>First Name / MI</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='FirstName'><code event='inputvalidation'><formula>@If(@Trim(FirstName) = ""; @Failure("First name is required."); @Success)</formula></code></field><run> </run><field type='text' kind='editable' name='MI'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Relationship to Veteran</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Relationship'><keywords ui='combobox' allownew='true'><textlist><text>Self</text><text>Spouse</text><text>Son</text><text>Daughter</text><text>Parent</text><text>Sibling</text><text>Grandchild</text><text>Other NOK</text></textlist></keywords><code event='defaultvalue'><formula>"Self"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Veteran (if NOK)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='VeteranName'><code event='inputvalidation'><formula>@If(Relationship != "Self" &amp; @Trim(VeteranName) = ""; @Failure("Enter the veteran's name for next-of-kin requesters."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Mailing Address</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Street'><code event='inputvalidation'><formula>@If(@Trim(Street) = ""; @Failure("Street address is required."); @Success)</formula></code></field><run>, </run><field type='text' kind='editable' name='City'/><run>, </run><field type='text' kind='editable' name='State'><code event='inputtranslation'><formula>@UpperCase(@Trim(State))</formula></code><code event='inputvalidation'><formula>@If(@Length(State) != 2; @Failure("State must be a 2-letter postal abbreviation."); @Success)</formula></code></field><run> </run><field type='text' kind='editable' name='ZIP'><code event='inputvalidation'><formula>@If(@Matches(ZIP; "{0-9}{0-9}{0-9}{0-9}{0-9}") | @Matches(ZIP; "{0-9}{0-9}{0-9}{0-9}{0-9}-{0-9}{0-9}{0-9}{0-9}"); @Success; @Failure("ZIP must be 99999 or 99999-9999."))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Telephone</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Phone'><code event='inputvalidation'><formula>@If(@Trim(Phone) = ""; @Success; @Length(Phone) &gt; 24; @Failure("Telephone may not exceed 24 characters."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>E-mail</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Email'><code event='inputtranslation'><formula>@LowerCase(@Trim(Email))</formula></code><code event='inputvalidation'><formula>@If(@Trim(Email) = ""; @Success; !@Contains(Email; "@") | @Length(Email) &gt; 120; @Failure("E-mail address is not valid."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Preferred Contact</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='PreferredContact'><keywords ui='radiobutton' columns='3'><textlist><text>Mail</text><text>Phone</text><text>E-mail</text></textlist></keywords><code event='defaultvalue'><formula>"Mail"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Source</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Source'><keywords ui='combobox' allownew='false'><textlist><text>HRC</text><text>NPRC</text><text>Manual</text><text>Congressional</text></textlist></keywords></field><run> created </run><field type='datetime' kind='computedwhencomposed' name='CreatedDate'><datetimeformat show='datetime' date='monthdayyear' time='hourminute'/><code event='value'><formula>@Now</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Address Verified</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='AddressVerified'><keywords ui='radiobutton' columns='2'><textlist><text>Yes</text><text>No</text></textlist></keywords><code event='defaultvalue'><formula>"No"</formula></code></field><run> on </run><field type='datetime' kind='editable' name='AddressVerifiedDate'><datetimeformat show='date' date='monthdayyear'/></field></par></tablecell></tablerow>
+</table>
+<pardef id='2' hide='read edit print preview'/>
+<par def='2'><field type='text' kind='computed' name='LookupKey' description='Dedupe key used by ImportAuthorizationFile'><code event='value'><formula>@UpperCase(@Trim(LastName)) + "|" + @UpperCase(@Trim(FirstName)) + "|" + @Left(ZIP; 5)</formula></code></field></par>
+<par def='2'><field type='text' kind='computed' name='DisplayName'><code event='value'><formula>LastName + ", " + FirstName + @If(MI != ""; " " + MI; "") + @If(Suffix != ""; " " + Suffix; "")</formula></code></field></par>
+<par def='2'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true'><code event='value'><formula>"[TACOM]":"[CSR]":"[Warehouse]":"[Admin]":"[ReadOnlyAudit]":"LocalDomainServers"</formula></code></field></par>
+<par def='2'><field type='text' kind='computed' name='MergedInto' description='Set by (MergeRequester) when this duplicate was merged; document kept for audit'><code event='value'><formula>MergedInto</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+</form>

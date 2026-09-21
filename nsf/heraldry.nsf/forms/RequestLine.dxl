@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='RequestLine' alias='frmRequestLine|Line' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ hide='notes' bgcolor='white' noreplace='false' renderpassthrough='true' formtype='response'
+ inheritfieldsfromselecteddoc='true' recalconrefresh='true' inheritfromparentviewdoc='true'>
+<noteinfo noteid='11A' unid='4F0C2D8E7A6B4C1D85258A1F00305C22' sequence='94'>
+<created><datetime>20040312T113000,00-05</datetime></created>
+<modified><datetime>20210419T101816,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name></updatedby>
+<globals><code event='options'><lotusscript>Option Public
+Option Declare
+Use "HAASValidation"</lotusscript></code></globals>
+<code event='windowtitle'><formula>"Line " + @Text(LineNumber) + " of " + ParentDocNumber</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'>
+<code event='hidewhen'><formula>@IsMember(LineStatus; "Released":"In Production":"Shipped":"Complete":"Cancelled")</formula></code>
+<code event='click'><formula>@Command([EditDocument])</formula></code></action>
+<action title='Open Parent Request' icon='6'><code event='click'><formula>@Command([OpenDocument]; "0"; ParentDocNumber)</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='13pt' style='bold' name='Verdana' color='navy'/>DD1348-6 Line Item</run></par>
+<par def='1'><run><font size='8pt' color='gray'/>Response document to a Request. Each line is itself a single-line-item requisition and receives the parent document number with a two-digit suffix.</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Parent Document Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computedwhencomposed' name='ParentDocNumber'><code event='value'><formula>DocumentNumber</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Line Number</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='computedwhencomposed' name='LineNumber'>
+<numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/>
+<code event='value'><formula>@Elements(@DbLookup("Notes":"NoCache"; ""; "($Lookups)"; "RL~" + DocumentNumber; 2)) + 1</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Line Document Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computed' name='LineDocNumber'><code event='value'><formula>ParentDocNumber + @Right("00" + @Text(LineNumber); 2)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>8. NSN (blank for exception item)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='NSN'>
+<code event='inputtranslation'><formula>@ReplaceSubstring(@Trim(NSN); "-"; "")</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(NSN) = ""; @Success; @Length(NSN) != 13 | !@Matches(NSN; "+{0-9}"); @Failure("NSN must be 13 digits (FSC + NIIN) or blank for a non-NSN exception item."); @Success)</formula></code>
+</field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Heraldic Item (catalog)</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='ItemKey' allownew='true'>
+<keywords ui='combobox' columns='1' allownew='true'><formula>@DbColumn("Notes":"NoCache"; ""; "HeraldicCatalog"; 2)</formula></keywords>
+<code event='inputvalidation'><formula>@If(@Trim(ItemKey) = "" &amp; @Trim(ExceptionData) = ""; @Failure("Select a catalog item or enter exception data (block 9)."); @Success)</formula></code>
+</field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Item Description</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computed' name='ItemDescription'>
+<code event='value'><formula>@If(@Trim(ItemKey) = ""; @Left(ExceptionData; 60); @Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 3)))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>9. Exception Data (non-NSN)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ExceptionData' description='Unit designation to embroider, streamer inscription, special sizing etc.'>
+<code event='inputvalidation'><formula>@If(@Length(ExceptionData) &gt; 500; @Failure("Exception data may not exceed 500 characters."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>10. Unit of Issue</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='UnitOfIssue'>
+<keywords ui='combobox' columns='1'><textlist><text>EA</text><text>SE</text><text>PR</text><text>KT</text></textlist></keywords>
+<code event='defaultvalue'><formula>"EA"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>11. Quantity</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='editable' name='Quantity'>
+<numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/>
+<code event='defaultvalue'><formula>1</formula></code>
+<code event='inputvalidation'><formula>@If(!@IsNumber(Quantity); @Failure("Quantity must be a whole number.");
+	Quantity &lt; 1; @Failure("Quantity must be at least 1.");
+	Quantity != @Integer(Quantity); @Failure("Quantity must be a whole number.");
+	@Trim(ItemKey) != "" &amp; Quantity &gt; @TextToNumber(@Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 5))); @Failure("Quantity exceeds the maximum per request for this item (see HeraldicItem.MaxQtyPerRequest). Submit a separate request or contact TACOM.");
+	Quantity &gt; 500; @Failure("Quantity may not exceed 500 on a single line.");
+	@Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Unit Price</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='computed' name='UnitPrice'>
+<numberformat format='currency' digits='2' punctuated='true' parens='false' percent='false'/>
+<code event='value'><formula>@If(@Trim(ItemKey) = ""; @If(@IsAvailable(UnitPrice); UnitPrice; 0); @TextToNumber(@Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 4))))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Extended Price</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='computed' name='ExtendedPrice'>
+<numberformat format='currency' digits='2' punctuated='true' parens='false' percent='false'/>
+<code event='value'><formula>@Round(Quantity * UnitPrice; 0.01)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Line Status</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='LineStatus' allownew='true'>
+<keywords ui='combobox' columns='1' allownew='true'><textlist><text>Open</text><text>Released</text><text>In Production</text><text>Backordered</text><text>Shipped</text><text>Complete</text><text>Cancelled</text></textlist></keywords>
+<code event='defaultvalue'><formula>"Open"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Vendor Ship Date</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='VendorShipDate'><datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/></field></par></tablecell></tablerow>
+</table>
+<pardef id='2' hide='read edit print preview'/>
+<par def='2'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true'><code event='value'><formula>@Trim(@Unique("[TACOM]" : "[DLA]" : "[Admin]" : "[ReadOnlyAudit]" : "LocalDomainServers" : EnteredBy : @If(@Trim(VendorKey) != ""; "Vendor-" + VendorKey; "")))</formula></code></field></par>
+<par def='2'><field type='text' kind='computed' name='VendorKey'><code event='value'><formula>@If(@IsAvailable(VendorKey); VendorKey; "")</formula></code></field></par>
+<par def='2'><field type='names' kind='computedwhencomposed' name='EnteredBy'><code event='value'><formula>@UserName</formula></code></field></par>
+<par def='2'><field type='text' kind='computed' name='LookupKey'><code event='value'><formula>"RL~" + ParentDocNumber</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+<item name='$Comment'><text>Response form. $REF holds the parent Request UNID; ParentDocNumber is a denormalised copy used by ($Lookups). ~40 orphaned lines exist where the parent was deleted directly in the Notes client.</text></item>
+</form>

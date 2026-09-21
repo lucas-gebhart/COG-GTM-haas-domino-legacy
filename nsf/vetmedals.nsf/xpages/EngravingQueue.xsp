@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom"
+	pageTitle="Engraving Queue">
+	<!-- Engraving shop work queue. Backed by the EngravingQueue view (categorised by Priority, sorted by QueuedDate). -->
+	<xp:this.resources>
+		<xp:script src="/HAASCase.jss" clientSide="false" />
+	</xp:this.resources>
+	<xp:this.beforePageLoad><![CDATA[#{javascript:
+var st = String(param.status == null ? "Queued" : param.status);
+if (["Queued", "In Progress", "Complete", "Rework", "All"].indexOf(st) < 0) { st = "Queued"; }
+viewScope.status = st;
+var job = String(param.job == null ? "" : param.job).trim();
+viewScope.job = /^ENG-\d{4}-\d{5}$/.test(job) ? job : "";
+viewScope.msg = "";}]]></xp:this.beforePageLoad>
+
+	<xp:this.data>
+		<xp:dominoView var="queue" viewName="EngravingQueue" expandLevel="2" />
+	</xp:this.data>
+
+	<xc:ccLayout pageName="Engraving Queue" navSelection="engraving" showNav="true">
+		<xp:this.facets>
+			<xp:panel xp:key="content">
+				<xc:ccStatusBanner message="#{javascript:viewScope.msg}" />
+				<xp:label value="Engraving Queue" styleClass="haasH1" />
+				<xp:text escape="true" styleClass="haasHelp" value="Jobs are queued automatically when a case with engravable decorations moves to the Engraving stage. Mark a job In Progress when it is on the machine; Complete moves the case to Assembly/QC." />
+
+				<xp:panel styleClass="haasFilterBar">
+					<xp:label value="Show:" for="cbStatus" />
+					<xp:comboBox id="cbStatus" value="#{viewScope.status}" styleClass="haasInput">
+						<xp:selectItem itemLabel="Queued" itemValue="Queued" />
+						<xp:selectItem itemLabel="In Progress" itemValue="In Progress" />
+						<xp:selectItem itemLabel="Rework" itemValue="Rework" />
+						<xp:selectItem itemLabel="Complete (30 days)" itemValue="Complete" />
+						<xp:selectItem itemLabel="All" itemValue="All" />
+						<xp:eventHandler event="onchange" submit="true" refreshMode="complete" />
+					</xp:comboBox>
+					<xp:label value="Machine:" for="cbMachine" />
+					<xp:comboBox id="cbMachine" value="#{viewScope.machine}" styleClass="haasInput">
+						<xp:selectItem itemLabel="(any)" itemValue="" />
+						<xp:selectItem itemLabel="Gravograph IS400 #1" itemValue="IS400-1" />
+						<xp:selectItem itemLabel="Gravograph IS400 #2" itemValue="IS400-2" />
+						<xp:selectItem itemLabel="Laser LS100" itemValue="LS100" />
+					</xp:comboBox>
+				</xp:panel>
+
+				<xp:viewPanel id="vpQueue" value="#{queue}" rows="50" styleClass="haasView" viewStyle="width:100%" showColumnHeader="true" pageName="/EngravingJob"
+					rowClasses="haasRowOdd,haasRowEven">
+					<xp:this.facets>
+						<xp:pager partialRefresh="true" layout="Previous Group Next" xp:key="headerPager" id="pager1" styleClass="haasPager" />
+					</xp:this.facets>
+					<xp:viewColumn columnName="Priority" styleClass="haasCategory"><xp:viewColumnHeader value="Priority" /></xp:viewColumn>
+					<xp:viewColumn columnName="QueuedDate"><xp:viewColumnHeader value="Queued" /><xp:this.converter><xp:convertDateTime type="date" dateStyle="short" /></xp:this.converter></xp:viewColumn>
+					<xp:viewColumn columnName="JobNumber" displayAs="link" openDocAsReadonly="true"><xp:viewColumnHeader value="Job" /></xp:viewColumn>
+					<xp:viewColumn columnName="CaseNumber"><xp:viewColumnHeader value="Case" /></xp:viewColumn>
+					<xp:viewColumn columnName="VeteranName"><xp:viewColumnHeader value="Veteran" /></xp:viewColumn>
+					<xp:viewColumn columnName="Items"><xp:viewColumnHeader value="Items" /></xp:viewColumn>
+					<xp:viewColumn columnName="EngravingText" styleClass="haasMono"><xp:viewColumnHeader value="Engraving Text" /></xp:viewColumn>
+					<xp:viewColumn columnName="JobStatus"><xp:viewColumnHeader value="Status" /></xp:viewColumn>
+					<xp:viewColumn columnName="Machine"><xp:viewColumnHeader value="Machine" /></xp:viewColumn>
+					<xp:viewColumn columnName="Engraver"><xp:viewColumnHeader value="Engraver" /></xp:viewColumn>
+					<xp:viewColumn columnName="DaysInQueue"><xp:viewColumnHeader value="Days" /></xp:viewColumn>
+				</xp:viewPanel>
+
+				<xp:panel styleClass="haasActionBar" rendered="#{javascript:HAASCase.hasRole('[Engraver]') || HAASCase.hasRole('[TACOM]')}">
+					<xp:button value="Start Selected" id="btnStart" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:
+var ids = getComponent("vpQueue").getSelectedIds();
+var n = 0;
+for (var i = 0; i < ids.length; i++) {
+	var d = database.getDocumentByID(ids[i]);
+	if (d != null && d.getItemValueString("JobStatus") == "Queued") {
+		d.replaceItemValue("JobStatus", "In Progress");
+		d.replaceItemValue("StartedDate", session.createDateTime(new java.util.Date()));
+		d.replaceItemValue("Engraver", session.getCommonUserName());
+		d.replaceItemValue("Machine", viewScope.machine == null ? "" : viewScope.machine);
+		d.save(true, false); n++;
+	}
+}
+viewScope.msg = n + " job(s) started.";}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+					<xp:button value="Complete Selected" id="btnComplete" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:
+var ids = getComponent("vpQueue").getSelectedIds();
+var n = 0, errs = [];
+for (var i = 0; i < ids.length; i++) {
+	var d = database.getDocumentByID(ids[i]);
+	if (d == null) { continue; }
+	if (d.getItemValueString("ProofChecked") != "Yes") { errs.push(d.getItemValueString("JobNumber") + ": proof not checked"); continue; }
+	d.replaceItemValue("JobStatus", "Complete");
+	d.replaceItemValue("CompletedDate", session.createDateTime(new java.util.Date()));
+	d.save(true, false);
+	var agent = database.getAgent("(AdvanceStage)");
+	agent.runWithDocumentContext(d);   // moves the parent case Engraving -> Assembly/QC
+	n++;
+}
+viewScope.msg = n + " job(s) completed." + (errs.length ? " Not completed: " + errs.join("; ") : "");}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+					<xp:button value="Send Back for Rework" id="btnRework" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:
+var ids = getComponent("vpQueue").getSelectedIds();
+for (var i = 0; i < ids.length; i++) {
+	var d = database.getDocumentByID(ids[i]);
+	if (d == null) { continue; }
+	d.replaceItemValue("JobStatus", "Rework");
+	d.replaceItemValue("ReworkCount", d.getItemValueInteger("ReworkCount") + 1);
+	d.save(true, false);
+}
+viewScope.msg = ids.length + " job(s) sent for rework.";}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+					<xp:button value="Print Job Tickets" id="btnPrint" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="false">
+							<xp:this.script><![CDATA[window.print();]]></xp:this.script>
+						</xp:eventHandler>
+					</xp:button>
+				</xp:panel>
+			</xp:panel>
+		</xp:this.facets>
+	</xc:ccLayout>
+</xp:view>

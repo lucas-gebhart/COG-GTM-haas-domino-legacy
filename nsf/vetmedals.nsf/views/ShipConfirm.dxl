@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='ShipConfirm' alias='Ship|vwShip' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='true' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='true' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='false'
+ nomenu='false' allowcustomizations='true'>
+<noteinfo noteid='15A' unid='B7C8D9EAFB0C1D2E85258A1F00305D71' sequence='97'>
+<created><datetime>20040305T100000,00-05</datetime></created>
+<modified><datetime>20230110T104417,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT Form = &quot;ShipmentRecord&quot; &amp; !@IsAvailable($Conflict)</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Confirm Shipped' icon='14'><code event='hidewhen'><formula>!@IsMember(&quot;[Warehouse]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;(ShipConfirm)&quot;)</formula></code></action>
+<action title='Print Manifest' icon='23'><code event='click'><formula>@Command([FilePrint]; &quot;1&quot;; &quot;0&quot;; &quot;Manifest&quot;)</formula></code></action>
+<action title='Send Status Mail' icon='35'><code event='hidewhen'><formula>!@IsMember(&quot;[CSR]&quot;:&quot;[Warehouse]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;SendStatusMail&quot;)</formula></code></action>
+</actionbar>
+<column itemname='StatusCat' width='14' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Shipment Status'/>
+<code event='value'><formula>ShipStatus</formula></code>
+</column>
+<column itemname='ShipDateCat' width='12' resizable='true' sort='descending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Ship Date'/>
+<code event='value'><formula>@If(@IsTime(ShippedDate); @Text(ShippedDate; &quot;D0S0&quot;); ShipDateText != &quot;&quot;; ShipDateText; &quot;(not shipped)&quot;)</formula></code>
+</column>
+<column itemname='ShipmentNumber' width='15' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Shipment'/>
+<code event='value'><formula>ShipmentNumber</formula></code>
+</column>
+<column itemname='CaseNumber' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Case'/>
+<code event='value'><formula>CaseNumber</formula></code>
+</column>
+<column itemname='ShipToName' width='24' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Ship To'/>
+<code event='value'><formula>ShipToName</formula></code>
+</column>
+<column itemname='Carrier' width='14' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Carrier'/>
+<code event='value'><formula>Carrier</formula></code>
+</column>
+<column itemname='TrackingNumber' width='24' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Tracking'/>
+<code event='value'><formula>TrackingNumber</formula></code>
+</column>
+<column itemname='Partial' width='7' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Partial'/>
+<code event='value'><formula>@If(Partial = &quot;Yes&quot;; &quot;Partial&quot;; &quot;&quot;)</formula></code>
+</column>
+<column itemname='PieceCount' width='4' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Pcs'/>
+<code event='value'><formula>@Text(PieceCount)</formula></code>
+</column>
+<column itemname='ShippedBy' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Shipped By'/>
+<code event='value'><formula>@Name([CN]; ShippedBy)</formula></code>
+</column>
+<item name='$Comment'><text>Daily shipping manifest. Second category uses ShipDateText when ShippedDate is not a real date - pre-2009 records hold text dates in three different formats.</text></item>
+</view>

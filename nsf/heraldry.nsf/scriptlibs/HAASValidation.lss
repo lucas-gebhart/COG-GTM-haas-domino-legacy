@@ -1,0 +1,144 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+'   HAASValidation - back-end validation mirroring the @Formula input validation on the Request / RequestLine forms.
+'   Used by web (XPages) save paths where field-level @Formulas do not fire, and by agents that create documents.
+Option Public
+Option Declare
+Use "HAASCommon"
+
+'++LotusScript Development Environment:2:5:(Forward):0:1
+Declare Function ValidateRequestHeader(doc As NotesDocument) As Boolean
+Declare Function ValidateRequestLine(doc As NotesDocument, maxQty As Long) As Boolean
+Declare Function IsValidDODAAC(v As String) As Boolean
+Declare Function IsValidUIC(v As String) As Boolean
+Declare Function IsValidRPD(v As String) As Boolean
+Declare Function IsValidNSN(v As String) As Boolean
+Declare Function IsAlnum(v As String) As Boolean
+Declare Function LastValidationError() As String
+
+'++LotusScript Development Environment:2:5:(Declarations):0:10
+Private gLastError As String
+Const MAX_JUSTIFICATION = 2000
+Const MAX_NAME = 80
+Const MAX_LINE_QTY = 500
+
+'++LotusScript Development Environment:2:1:LastValidationError:1:8
+Function LastValidationError() As String
+	LastValidationError = gLastError
+End Function
+
+'++LotusScript Development Environment:2:1:IsAlnum:1:8
+Function IsAlnum(v As String) As Boolean
+	Dim i As Integer, c As String
+	IsAlnum = Len(v) > 0
+	For i = 1 To Len(v)
+		c = Mid$(v, i, 1)
+		If Not ((c >= "A" And c <= "Z") Or (c >= "0" And c <= "9")) Then
+			IsAlnum = False
+			Exit Function
+		End If
+	Next
+End Function
+
+'++LotusScript Development Environment:2:1:IsValidDODAAC:1:8
+Function IsValidDODAAC(v As String) As Boolean
+	' 6 alphanumeric characters (A-Z, 0-9); Army DODAACs commonly start with W but the form does not enforce that.
+	IsValidDODAAC = (Len(v) = 6) And IsAlnum(UCase(v))
+End Function
+
+'++LotusScript Development Environment:2:1:IsValidUIC:1:8
+Function IsValidUIC(v As String) As Boolean
+	' Army UIC: W + 5 alphanumeric
+	IsValidUIC = (Len(v) = 6) And (Left$(UCase(v), 1) = "W") And IsAlnum(UCase(v))
+End Function
+
+'++LotusScript Development Environment:2:1:IsValidRPD:1:8
+Function IsValidRPD(v As String) As Boolean
+	Dim n As Integer
+	IsValidRPD = False
+	If Len(v) <> 2 Then Exit Function
+	If Not IsNumeric(v) Then Exit Function
+	n = CInt(v)
+	IsValidRPD = (n >= 1 And n <= 15)
+End Function
+
+'++LotusScript Development Environment:2:1:IsValidNSN:1:8
+Function IsValidNSN(v As String) As Boolean
+	' 9999-99-999-9999
+	IsValidNSN = (v Like "####-##-###-####")
+End Function
+
+'++LotusScript Development Environment:2:1:ValidateRequestHeader:1:8
+Function ValidateRequestHeader(doc As NotesDocument) As Boolean
+	Dim dodaac As String, uic As String, rpd As String, just As String
+	gLastError = ""
+	ValidateRequestHeader = False
+	dodaac = UCase(Trim(SafeGetText(doc, "DODAAC")))
+	uic = UCase(Trim(SafeGetText(doc, "UIC")))
+	rpd = Trim(SafeGetText(doc, "RPD"))
+	just = SafeGetText(doc, "Justification")
+
+	If dodaac = "" Then
+		gLastError = "DODAAC is required (block 1)."
+	ElseIf Not IsValidDODAAC(dodaac) Then
+		gLastError = "DODAAC must be 6 alphanumeric characters (A-Z, 0-9)."
+	ElseIf uic = "" Then
+		gLastError = "UIC is required."
+	ElseIf Not IsValidUIC(uic) Then
+		gLastError = "UIC must be W followed by 5 alphanumeric characters."
+	ElseIf Not IsValidRPD(rpd) Then
+		gLastError = "Requisition Priority Designator must be 01 through 15."
+	ElseIf Trim(SafeGetText(doc, "UnitName")) = "" Then
+		gLastError = "Unit designation is required."
+	ElseIf Trim(SafeGetText(doc, "RequesterName")) = "" Then
+		gLastError = "Requester name is required."
+	ElseIf Len(SafeGetText(doc, "RequesterName")) > MAX_NAME Then
+		gLastError = "Requester name may not exceed " & MAX_NAME & " characters."
+	ElseIf Trim(SafeGetText(doc, "RequesterEmail")) = "" Then
+		gLastError = "An e-mail address is required for status notifications."
+	ElseIf Trim(SafeGetText(doc, "ShipToAddress")) = "" Then
+		gLastError = "Ship-to address is required."
+	ElseIf Len(just) > MAX_JUSTIFICATION Then
+		gLastError = "Justification may not exceed " & MAX_JUSTIFICATION & " characters."
+	Else
+		' normalize on the way through, like the input translation formulas do
+		Call doc.ReplaceItemValue("DODAAC", dodaac)
+		Call doc.ReplaceItemValue("UIC", uic)
+		Call doc.ReplaceItemValue("RPD", Right$("00" & rpd, 2))
+		ValidateRequestHeader = True
+	End If
+End Function
+
+'++LotusScript Development Environment:2:1:ValidateRequestLine:1:8
+Function ValidateRequestLine(doc As NotesDocument, maxQty As Long) As Boolean
+	Dim qty As Variant
+	Dim nsn As String
+	gLastError = ""
+	ValidateRequestLine = False
+	nsn = Trim(SafeGetText(doc, "NSN"))
+	If nsn = "" And Trim(SafeGetText(doc, "ExceptionData")) = "" Then
+		gLastError = "Enter either an NSN or exception data describing the non-NSN item."
+		Exit Function
+	End If
+	If nsn <> "" And Not IsValidNSN(nsn) Then
+		gLastError = "NSN must be in the format 9999-99-999-9999."
+		Exit Function
+	End If
+	If Not doc.HasItem("Quantity") Then
+		gLastError = "Quantity must be a whole number."
+		Exit Function
+	End If
+	qty = doc.GetItemValue("Quantity")(0)
+	If Not IsNumeric(qty) Then
+		gLastError = "Quantity must be a whole number."
+	ElseIf CDbl(qty) < 1 Then
+		gLastError = "Quantity must be at least 1."
+	ElseIf CDbl(qty) <> Fix(CDbl(qty)) Then
+		gLastError = "Quantity must be a whole number."
+	ElseIf maxQty > 0 And CDbl(qty) > maxQty Then
+		gLastError = "Quantity exceeds the maximum per request for this item (see HeraldicItem.MaxQtyPerRequest). Submit a separate request or contact TACOM."
+	ElseIf CDbl(qty) > MAX_LINE_QTY Then
+		gLastError = "Quantity may not exceed " & MAX_LINE_QTY & " on a single line."
+	Else
+		ValidateRequestLine = True
+	End If
+End Function

@@ -1,0 +1,116 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+' Agent: ArchiveClosedCases
+' Trigger: scheduled weekly (Sunday 01:00) on HAAS-APP01.
+'
+' Copies AwardsCase documents Closed for more than Profile.ArchiveAfterDays (default 730) together with
+' their AwardLine / CaseNote responses, EngravingJob and ShipmentRecord documents into the archive
+' replica (Profile.ArchiveDbPath), then stamps $Archived on the originals and removes them.
+'
+' Known wart (#5): EngravingJob and ShipmentRecord are NOT response documents - they are matched on
+' CaseNumber. Jobs/shipments whose CaseNumber was re-keyed by a CSR are left behind as orphans, and
+' AwardLines under a case that was deleted manually (not via this agent) stay in the live database.
+Option Public
+Option Declare
+Use "HAASCommon"
+
+'++LotusScript Development Environment:2:5:(Declarations):0:10
+Const AGENT_NAME = "ArchiveClosedCases"
+Const BATCH_LIMIT = 500
+
+'++LotusScript Development Environment:2:2:Initialize:1:10
+Sub Initialize
+	Dim s As NotesSession
+	Dim db As NotesDatabase
+	Dim arch As NotesDatabase
+	Dim coll As NotesDocumentCollection
+	Dim doc As NotesDocument
+	Dim nextDoc As NotesDocument
+	Dim cutoff As NotesDateTime
+	Dim archiveDays As Long
+	Dim nCases As Long, nChildren As Long, nSide As Long, nErrors As Long
+	Dim closedDate As Variant
+	On Error GoTo ErrHandler
+
+	Set s = New NotesSession
+	Set db = s.CurrentDatabase
+	archiveDays = GetProfileNumber(db, "ArchiveAfterDays", 730)
+	Set arch = s.GetDatabase(db.Server, GetProfileText(db, "ArchiveDbPath", "haas\archive\vetmedals_arch.nsf"))
+	If Not arch.IsOpen Then
+		Call LogAgent(AGENT_NAME, "ABORT - archive database not found: " & GetProfileText(db, "ArchiveDbPath", ""))
+		Exit Sub
+	End If
+	Set cutoff = New NotesDateTime(Today)
+	Call cutoff.AdjustDay(-CInt(archiveDays))
+	Call LogAgent(AGENT_NAME, "Start - archiving cases closed before " & cutoff.DateOnly)
+
+	Set coll = db.Search({Form = "AwardsCase" & Stage = "Closed" & @IsTime(ClosedDate) & ClosedDate < @Date(} & Year(cutoff.LSLocalTime) & ";" & Month(cutoff.LSLocalTime) & ";" & Day(cutoff.LSLocalTime) & {)}, Nothing, BATCH_LIMIT)
+	Set doc = coll.GetFirstDocument
+	Do Until doc Is Nothing
+		Set nextDoc = coll.GetNextDocument(doc)
+		closedDate = SafeGetDate(doc, "ClosedDate")
+		If ArchiveOne(db, arch, doc, nChildren, nSide) Then
+			nCases = nCases + 1
+		Else
+			nErrors = nErrors + 1
+		End If
+		Set doc = nextDoc
+	Loop
+	Call StampAgentRun(db, "ArchiveLastRun")
+	Call LogAgent(AGENT_NAME, "Done - " & nCases & " cases, " & nChildren & " responses, " & nSide & " jobs/shipments archived; " & nErrors & " errors" & IIf(coll.Count = BATCH_LIMIT, " (batch limit reached - more remain)", ""))
+	Exit Sub
+ErrHandler:
+	Call LogAgent(AGENT_NAME, "Error " & Err & ": " & Error$ & " at line " & Erl)
+	Exit Sub
+End Sub
+
+'++LotusScript Development Environment:2:1:ArchiveOne:1:8
+Function ArchiveOne(db As NotesDatabase, arch As NotesDatabase, caseDoc As NotesDocument, nChildren As Long, nSide As Long) As Boolean
+	Dim responses As NotesDocumentCollection
+	Dim child As NotesDocument
+	Dim copyDoc As NotesDocument
+	Dim sideColl As NotesDocumentCollection
+	Dim sideDoc As NotesDocument
+	Dim caseNo As String
+	Dim stamp As NotesDateTime
+	On Error GoTo ErrHandler
+	ArchiveOne = False
+	caseNo = SafeGetText(caseDoc, "CaseNumber")
+	Set stamp = New NotesDateTime(Now)
+
+	' 1. responses (AwardLine, CaseNote)
+	Set responses = caseDoc.Responses
+	Set child = responses.GetFirstDocument
+	Do Until child Is Nothing
+		Set copyDoc = child.CopyToDatabase(arch)
+		Call copyDoc.ReplaceItemValue("$Archived", stamp)
+		Call copyDoc.Save(True, False)
+		nChildren = nChildren + 1
+		Set child = responses.GetNextDocument(child)
+	Loop
+
+	' 2. side documents keyed by CaseNumber (not responses - see header comment)
+	Set sideColl = db.Search({(Form = "EngravingJob" | Form = "ShipmentRecord") & CaseNumber = "} & caseNo & {"}, Nothing, 0)
+	Set sideDoc = sideColl.GetFirstDocument
+	Do Until sideDoc Is Nothing
+		Set copyDoc = sideDoc.CopyToDatabase(arch)
+		Call copyDoc.ReplaceItemValue("$Archived", stamp)
+		Call copyDoc.Save(True, False)
+		nSide = nSide + 1
+		Set sideDoc = sideColl.GetNextDocument(sideDoc)
+	Loop
+
+	' 3. the case itself; mark then remove (responses removed with parent)
+	Set copyDoc = caseDoc.CopyToDatabase(arch)
+	Call copyDoc.ReplaceItemValue("$Archived", stamp)
+	Call copyDoc.ReplaceItemValue("ArchivedFrom", db.FilePath)
+	Call copyDoc.Save(True, False)
+	Call sideColl.RemoveAll(True)
+	Call responses.RemoveAll(True)
+	Call caseDoc.Remove(True)
+	ArchiveOne = True
+	Exit Function
+ErrHandler:
+	Call LogAgent(AGENT_NAME, "Error archiving " & caseNo & ": " & Error$ & " at line " & Erl)
+	ArchiveOne = False
+	Exit Function
+End Function

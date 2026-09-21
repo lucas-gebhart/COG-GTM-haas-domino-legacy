@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='AssemblyQueue' alias='Assembly|vwAssembly' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='true' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='false' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='false'
+ nomenu='false' allowcustomizations='true'>
+<noteinfo noteid='152' unid='F5A6B7C8D9EAFB0C85258A1F00305D71' sequence='41'>
+<created><datetime>20040305T093000,00-05</datetime></created>
+<modified><datetime>20200907T112233,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT Form = &quot;AwardsCase&quot; &amp; Stage = &quot;Assembly/QC&quot; &amp; !@IsAvailable($Conflict)</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='QC Pass -&gt; Warehouse' icon='14'><code event='hidewhen'><formula>!@IsMember(&quot;[Assembler]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;(AdvanceStage)&quot;)</formula></code></action>
+<action title='QC Fail (Rework)' icon='81'><code event='hidewhen'><formula>!@IsMember(&quot;[Assembler]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;(QCFail)&quot;)</formula></code></action>
+<action title='Print Assembly Sheet' icon='23'><code event='click'><formula>@Command([FilePrint]; &quot;1&quot;; &quot;0&quot;; &quot;AssemblySheet&quot;)</formula></code></action>
+</actionbar>
+<column itemname='QCCat' width='24' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='QC'/>
+<code event='value'><formula>@If(QCResult = &quot;Fail - Rework&quot;; &quot;1. Rework required&quot;; QCResult = &quot;Pass&quot;; &quot;3. QC passed - awaiting warehouse&quot;; &quot;2. Awaiting assembly / QC&quot;)</formula></code>
+</column>
+<column itemname='AssemblyDate' width='12' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='In Assembly Since'/>
+<code event='value'><formula>@Text(AssemblyDate; &quot;D0S0&quot;)</formula></code>
+</column>
+<column itemname='CaseNumber' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Case'/>
+<code event='value'><formula>CaseNumber</formula></code>
+</column>
+<column itemname='Veteran' width='24' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Veteran'/>
+<code event='value'><formula>VeteranLastName + &quot;, &quot; + VeteranFirstName</formula></code>
+</column>
+<column itemname='Priority' width='10' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Priority'/>
+<code event='value'><formula>Priority</formula></code>
+</column>
+<column itemname='LineCount' width='5' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Lines'/>
+<code event='value'><formula>@Text(LineCount)</formula></code>
+</column>
+<column itemname='EngravingRequired' width='18' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Engraved'/>
+<code event='value'><formula>@If(EngravingRequired = &quot;Yes&quot;; &quot;Yes - &quot; + EngravingJobNumber; &quot;No&quot;)</formula></code>
+</column>
+<column itemname='DaysInStage' width='7' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Days in Stage'/>
+<code event='value'><formula>@Text(DaysInStage)</formula></code>
+</column>
+<column itemname='AgingFlag' width='6' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Aging'/>
+<code event='value'><formula>AgingFlag</formula></code>
+</column>
+<item name='$Comment'><text>Assembly and quality-control bench queue. Cases in Assembly/QC categorized by QC result.</text></item>
+</view>

@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE database SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<database xmlns='http://www.lotus.com/dxl' version='12.0' maintenanceversion='2.0'
+ replicaid='C1258A1F00305C22' path='haas\heraldry.nsf' title='Heraldry Automation System'
+ fromtemplate='' designerversion='12.0.2' increasemaxfields='true' allowbackgroundagents='true'
+ allowstoredforms='false' usejavascriptinpages='true' allowsoftdeletions='true'
+ softdeletionsexpirein='48' documentsummary16mb='true' uselz1='true' compressdesign='true'
+ compressdocuments='true' showinopendialog='true' listinreplica='true' allowdesignlocking='true'
+ inheritdesignfromtemplate='false' maxupdatedbylistlength='20' maxrevisionslistlength='20'
+ daysToPurgeDeletions='90' allowmoreFields='true' unreadmarks='never' optimizedocumenttable='true'
+ replicationhistory='true'>
+<databaseinfo dbid='C1258A1F00305C22' odsversion='55' percentused='71.3' numberofdocuments='4196'
+ diskspace='912457728' replicaid='C1258A1F00305C22' created='20040218T090000,00-05'
+ designmodified='20250103T161455,00-05' lastdesigntemplateupdate='' filepath='haas\heraldry.nsf'
+ category='Heraldry;TACOM;CHPSID' >
+<datamodified><datetime>20260918T073002,00-04</datetime></datamodified>
+<designmodified><datetime>20250103T161455,00-05</datetime></designmodified>
+</databaseinfo>
+<databasescript>
+<code event='postopen'><lotusscript>Sub Postopen(Source As Notesuidatabase)
+	' Set the last-opened profile stamp used by the aging report header
+	Dim s As New NotesSession
+	Dim prof As NotesDocument
+	Set prof = Source.Database.GetProfileDocument("Profile")
+	If Not prof Is Nothing Then
+		Call prof.ReplaceItemValue("LastOpened", Now)
+		Call prof.Save(True, False)
+	End If
+End Sub</lotusscript></code>
+</databasescript>
+<launchsettings>
+<noteslaunch whenopened='openframeset' frameset='fsMain'/>
+<weblaunch whenopened='openxpage' xpage='HeraldryHome.xsp'/>
+</launchsettings>
+<!--
+  HAAS - Heraldry Automation System (heraldry.nsf)
+  ===========================================================================
+  SYNTHETIC design export. This is a stand-in modelled on the public URL shape
+  of the real Army Heraldry Automation System (heraldryhome.nsf/*.xsp,
+  heraldry.nsf/request?OpenForm). Nothing here is copied from, or claims to be,
+  the real internal design.
+
+  Design summary (see acl.dxl, forms/, views/, agents/, xpages/):
+    Forms   : Request (DD1348-6 header), RequestLine, SESFlagRequest, Vendor,
+              HeraldicItem, Requester, Profile; subform sfRequesterPOC
+    Views   : RequestsByStatus, RequestsByUnit, RequestsByDODAAC, OpenVendorWork,
+              StatusInquiry, SESFlagQueue, HeraldicCatalog, Vendors, ($All), ($Lookups)
+    Agents  : ReleaseToVendor (manual), CancelRequest (manual), SendStatusMail
+              (scheduled hourly), RebuildStatusInquiryIndex (scheduled nightly)
+    XPages  : HeraldryHome, Request, ModifyRequest, StatusInquiry, SESFlag,
+              VendorQueue, Login; custom controls ccLayout, ccStatusBanner
+    Script  : HAASCommon, HAASValidation, HAASMail (LotusScript);
+              HAASStatus.jss, HAASRequest.jss (SSJS)
+
+  Template inheritance: none (design was detached from the "HeraldryV2"
+  template in 2013 when the classic forms were re-skinned with XPages).
+  Full-text index: enabled, updated daily (see notes.ini.sample UPDATE_FULLTEXT_THREAD).
+  The public-facing pages historically lived in heraldryhome.nsf; in HAAS they
+  are consolidated into heraldry.nsf and the harness aliases /heraldryhome.nsf/.
+-->
+<item name='$TITLE'><text>Heraldry Automation System</text></item>
+<item name='$Flags'><text>7Jn</text></item>
+<item name='$Class'><text>0x4f0</text></item>
+<item name='$Modified'><datetime>20250103T161455,00-05</datetime></item>
+<item name='$DesignVersion'><text>12.0.2</text></item>
+<item name='$TemplateBuild'><text>HAAS-HERALDRY-2025-01</text></item>
+<item name='$TemplateBuildDate'><datetime>20250103T160000,00-05</datetime></item>
+<item name='$FTIndexEnabled'><text>1</text></item>
+<item name='$DBIDPrefix'><text>haas</text></item>
+<item name='$UnreadMarks'><text>Never</text></item>
+<item name='$Category'><textlist><text>Heraldry</text><text>TACOM</text><text>CHPSID</text></textlist></item>
+</database>

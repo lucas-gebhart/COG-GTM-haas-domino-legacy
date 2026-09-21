@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom"
+	pageTitle="Heraldry Request Status Inquiry">
+	<!-- Public (Anonymous reader) status inquiry by document number. Backed by the StatusInquiry lookup view. -->
+	<xp:this.resources>
+		<xp:script src="/HAASStatus.jss" clientSide="false" />
+	</xp:this.resources>
+	<xc:ccLayout pageName="Status Inquiry" navSelection="status" showNav="true">
+		<xp:this.facets>
+			<xp:panel xp:key="content">
+				<xp:label value="Request Status Inquiry" styleClass="haasH1" />
+				<xp:text escape="true" styleClass="haasHelp" value="Enter the 14-character document number printed on your DD Form 1348-6 (requisitioner DODAAC + Julian date + serial), or an SES flag request number." />
+				<xp:panel styleClass="haasLookupBox">
+					<xp:label value="Document Number:" for="docNumber" />
+					<xp:inputText id="docNumber" value="#{viewScope.docNumber}" maxlength="20" size="24" styleClass="haasInput" style="text-transform:uppercase" />
+					<xp:button value="Inquire" id="btnInquire" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="partial" refreshId="pnlResult">
+							<xp:this.action><![CDATA[#{javascript:viewScope.result = HAASStatus.lookup(viewScope.docNumber);}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+				</xp:panel>
+
+				<xp:panel id="pnlResult">
+					<xp:panel styleClass="haasErrorBanner" rendered="#{javascript:viewScope.result != null &amp;&amp; viewScope.result.error != null}">
+						<xp:text escape="true" value="#{javascript:viewScope.result.error}" />
+					</xp:panel>
+					<xp:panel rendered="#{javascript:viewScope.result != null &amp;&amp; viewScope.result.error == null}">
+						<xp:table styleClass="haasFormTable" border="1" cellpadding="3" cellspacing="0">
+							<xp:tr><xp:td styleClass="haasLabel">Document Number</xp:td><xp:td><xp:text escape="true" value="#{javascript:viewScope.result.documentNumber}" styleClass="haasDocNumber" /></xp:td></xp:tr>
+							<xp:tr><xp:td styleClass="haasLabel">Status</xp:td><xp:td><xp:text escape="true" value="#{javascript:viewScope.result.status}" styleClass="haasStatusValue" /></xp:td></xp:tr>
+							<xp:tr><xp:td styleClass="haasLabel">Unit</xp:td><xp:td><xp:text escape="true" value="#{javascript:viewScope.result.unit + ' (UIC ' + viewScope.result.uic + ', DODAAC ' + viewScope.result.dodaac + ')'}" /></xp:td></xp:tr>
+							<xp:tr><xp:td styleClass="haasLabel">Entered</xp:td><xp:td><xp:text escape="true" value="#{javascript:viewScope.result.entered}" /></xp:td></xp:tr>
+							<xp:tr><xp:td styleClass="haasLabel">Released to Vendor</xp:td><xp:td><xp:text escape="true" value="#{javascript:viewScope.result.released || '-'}" /> <xp:text escape="true" value="#{javascript:viewScope.result.vendor}" /></xp:td></xp:tr>
+							<xp:tr><xp:td styleClass="haasLabel">Estimated Ship</xp:td><xp:td><xp:text escape="true" value="#{javascript:viewScope.result.estimatedShip || '-'}" /></xp:td></xp:tr>
+							<xp:tr><xp:td styleClass="haasLabel">Shipped / Tracking</xp:td><xp:td><xp:text escape="true" value="#{javascript:(viewScope.result.shipped || '-') + ' ' + viewScope.result.tracking}" /></xp:td></xp:tr>
+							<xp:tr><xp:td styleClass="haasLabel">May be modified?</xp:td><xp:td><xp:text escape="true" value="#{javascript:viewScope.result.canModify ? 'Yes - until released to vendor' : 'No - released to vendor'}" /></xp:td></xp:tr>
+						</xp:table>
+						<xp:link text="Open / modify this request" value="#{javascript:'/ModifyRequest.xsp?documentId=' + viewScope.result.unid}" rendered="#{javascript:viewScope.result.canModify}" styleClass="haasBigLink" />
+						<xp:label value="History" styleClass="haasH2" />
+						<xp:repeat var="h" value="#{javascript:viewScope.result.history}">
+							<xp:text escape="true" value="#{javascript:h}" styleClass="haasHistoryLine" /><xp:br />
+						</xp:repeat>
+					</xp:panel>
+				</xp:panel>
+			</xp:panel>
+		</xp:this.facets>
+	</xc:ccLayout>
+</xp:view>

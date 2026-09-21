@@ -1,0 +1,189 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+'   HAASCommon - shared constants, profile access, status history, logging.
+'   Heraldry Automation System (heraldry.nsf) - also copied into vetmedals.nsf (see README-design.md, "duplicated library").
+Option Public
+Option Declare
+
+'++LotusScript Development Environment:2:5:(Forward):0:1
+Declare Function GetProfileValue(db As NotesDatabase, fieldName As String) As Variant
+Declare Function GetProfileText(db As NotesDatabase, fieldName As String, defaultValue As String) As String
+Declare Function IsReleased(doc As NotesDocument) As Boolean
+Declare Function IsMember(arr As Variant, value As String) As Boolean
+Declare Sub AppendStatusHistory(doc As NotesDocument, fromStatus As String, toStatus As String, who As String)
+Declare Sub LogAgent(agentName As String, msg As String)
+Declare Function NextSerial(db As NotesDatabase, counterField As String) As Long
+Declare Function FormatDocNumber(dodaac As String, dt As NotesDateTime, serial As Long) As String
+Declare Function JulianDate(dt As NotesDateTime) As String
+Declare Function NormalizeStatus(raw As String) As String
+Declare Function SafeGetText(doc As NotesDocument, itemName As String) As String
+
+'++LotusScript Development Environment:2:5:(Declarations):0:10
+' Status vocabulary. Free-text Status values in the data do not always match - see NormalizeStatus.
+Const STATUS_DRAFT = "Draft"
+Const STATUS_SUBMITTED = "Submitted"
+Const STATUS_REVIEW = "Under Review"
+Const STATUS_APPROVED = "Approved"
+Const STATUS_RELEASED = "Released to Vendor"
+Const STATUS_PRODUCTION = "In Production"
+Const STATUS_SHIPPED = "Shipped"
+Const STATUS_COMPLETE = "Complete"
+Const STATUS_CANCELLED = "Cancelled"
+
+Const MSG_RELEASED_NOMODIFY = "This request has been released to the vendor and can no longer be modified or cancelled. Contact TACOM Clothing & Heraldry PSID for assistance. (Error 4091)"
+Const MSG_CANCELLED = "This request has been cancelled."
+Const APP_TITLE = "Heraldry Automation System"
+Const LOG_DB = "haas\haaslog.nsf"
+Const PROFILE_FORM = "Profile"
+
+'++LotusScript Development Environment:2:1:GetProfileValue:1:8
+Function GetProfileValue(db As NotesDatabase, fieldName As String) As Variant
+	Dim prof As NotesDocument
+	Set prof = db.GetProfileDocument(PROFILE_FORM)
+	If prof Is Nothing Then
+		GetProfileValue = Null
+		Exit Function
+	End If
+	If prof.HasItem(fieldName) Then
+		GetProfileValue = prof.GetItemValue(fieldName)
+	Else
+		GetProfileValue = Null
+	End If
+End Function
+
+'++LotusScript Development Environment:2:1:GetProfileText:1:8
+Function GetProfileText(db As NotesDatabase, fieldName As String, defaultValue As String) As String
+	Dim v As Variant
+	v = GetProfileValue(db, fieldName)
+	If IsNull(v) Then
+		GetProfileText = defaultValue
+	ElseIf IsArray(v) Then
+		GetProfileText = CStr(v(0))
+	Else
+		GetProfileText = CStr(v)
+	End If
+End Function
+
+'++LotusScript Development Environment:2:1:IsReleased:1:8
+Function IsReleased(doc As NotesDocument) As Boolean
+	' A request is locked once released; the list is configurable in the Profile but has a hard-coded fallback.
+	Dim released As Variant
+	Dim st As String
+	st = NormalizeStatus(SafeGetText(doc, "Status"))
+	released = GetProfileValue(doc.ParentDatabase, "ReleasedStatuses")
+	If IsNull(released) Then
+		released = Evaluate({"Released to Vendor":"In Production":"Shipped":"Complete":"Cancelled"})
+	End If
+	IsReleased = IsMember(released, st)
+	' Belt and braces: the ReleasedDate is authoritative even if somebody typed over Status.
+	If Not IsReleased Then
+		If doc.HasItem("ReleasedDate") Then
+			If Trim(doc.GetItemValue("ReleasedDate")(0)) <> "" Then IsReleased = True
+		End If
+	End If
+End Function
+
+'++LotusScript Development Environment:2:1:IsMember:1:8
+Function IsMember(arr As Variant, value As String) As Boolean
+	Dim i As Integer
+	IsMember = False
+	If Not IsArray(arr) Then Exit Function
+	For i = LBound(arr) To UBound(arr)
+		If LCase(Trim(CStr(arr(i)))) = LCase(Trim(value)) Then
+			IsMember = True
+			Exit Function
+		End If
+	Next
+End Function
+
+'++LotusScript Development Environment:2:2:AppendStatusHistory:1:8
+Sub AppendStatusHistory(doc As NotesDocument, fromStatus As String, toStatus As String, who As String)
+	Dim item As NotesItem
+	Dim entry As String
+	entry = Format$(Now, "mm/dd/yyyy hh:nn AM/PM") & " " & fromStatus & " -> " & toStatus & " by " & who
+	If doc.HasItem("StatusHistory") Then
+		Set item = doc.GetFirstItem("StatusHistory")
+		Call item.AppendToTextList(entry)
+	Else
+		Call doc.ReplaceItemValue("StatusHistory", entry)
+	End If
+	Call doc.ReplaceItemValue("StatusChangedDate", Now)
+End Sub
+
+'++LotusScript Development Environment:2:2:LogAgent:1:8
+Sub LogAgent(agentName As String, msg As String)
+	' Writes to the agent log database if reachable, else to the server console.
+	On Error GoTo ConsoleOnly
+	Dim s As New NotesSession
+	Dim logDb As NotesDatabase
+	Dim logDoc As NotesDocument
+	Set logDb = s.GetDatabase(s.CurrentDatabase.Server, LOG_DB, False)
+	If logDb Is Nothing Then GoTo ConsoleOnly
+	If Not logDb.IsOpen Then GoTo ConsoleOnly
+	Set logDoc = logDb.CreateDocument
+	Call logDoc.ReplaceItemValue("Form", "LogEntry")
+	Call logDoc.ReplaceItemValue("Agent", agentName)
+	Call logDoc.ReplaceItemValue("Database", s.CurrentDatabase.FilePath)
+	Call logDoc.ReplaceItemValue("Message", msg)
+	Call logDoc.ReplaceItemValue("LogDate", Now)
+	Call logDoc.ReplaceItemValue("RunBy", s.EffectiveUserName)
+	Call logDoc.Save(True, False)
+	Exit Sub
+ConsoleOnly:
+	Print "[" & agentName & "] " & msg
+	Exit Sub
+End Sub
+
+'++LotusScript Development Environment:2:1:NextSerial:1:8
+Function NextSerial(db As NotesDatabase, counterField As String) As Long
+	' Not transactional. Two simultaneous saves can draw the same serial (known wart; ~30 duplicate DocumentNumbers in production).
+	Dim prof As NotesDocument
+	Dim n As Long
+	Set prof = db.GetProfileDocument(PROFILE_FORM)
+	n = CLng(prof.GetItemValue(counterField)(0))
+	If n < 1 Then n = 1
+	Call prof.ReplaceItemValue(counterField, n + 1)
+	Call prof.Save(True, False)
+	NextSerial = n
+End Function
+
+'++LotusScript Development Environment:2:1:JulianDate:1:8
+Function JulianDate(dt As NotesDateTime) As String
+	' MILSTRIP ordinal date: last digit of year + 3-digit day of year (e.g. 4 Mar 2019 -> 9063)
+	Dim d As Variant
+	d = dt.LSLocalTime
+	JulianDate = Right$(CStr(Year(d)), 1) & Right$("00" & CStr(DateDiff("d", DateSerial(Year(d), 1, 1), d) + 1), 3)
+End Function
+
+'++LotusScript Development Environment:2:1:FormatDocNumber:1:8
+Function FormatDocNumber(dodaac As String, dt As NotesDateTime, serial As Long) As String
+	' DD1348-6 block 8-10 document number: DODAAC(6) + ordinal date(4) + serial(4) = 14 characters
+	FormatDocNumber = UCase(dodaac) & JulianDate(dt) & Right$("0000" & CStr(serial), 4)
+End Function
+
+'++LotusScript Development Environment:2:1:NormalizeStatus:1:8
+Function NormalizeStatus(raw As String) As String
+	' Maps the free-text variants that accumulated in the Status field back to the keyword list.
+	Dim s As String
+	s = LCase(Trim(raw))
+	Select Case s
+	Case "draft", "new": NormalizeStatus = STATUS_DRAFT
+	Case "submitted", "submited", "pending": NormalizeStatus = STATUS_SUBMITTED
+	Case "under review", "in review", "review": NormalizeStatus = STATUS_REVIEW
+	Case "approved", "aproved", "appr": NormalizeStatus = STATUS_APPROVED
+	Case "released to vendor", "released", "release to vendor", "rel to vendor", "sent to vendor": NormalizeStatus = STATUS_RELEASED
+	Case "in production", "production", "in prod": NormalizeStatus = STATUS_PRODUCTION
+	Case "shipped", "shiped", "ship": NormalizeStatus = STATUS_SHIPPED
+	Case "complete", "completed", "closed": NormalizeStatus = STATUS_COMPLETE
+	Case "cancelled", "canceled", "cancel", "cxl": NormalizeStatus = STATUS_CANCELLED
+	Case Else: NormalizeStatus = Trim(raw)
+	End Select
+End Function
+
+'++LotusScript Development Environment:2:1:SafeGetText:1:8
+Function SafeGetText(doc As NotesDocument, itemName As String) As String
+	If doc.HasItem(itemName) Then
+		SafeGetText = CStr(doc.GetItemValue(itemName)(0))
+	Else
+		SafeGetText = ""
+	End If
+End Function

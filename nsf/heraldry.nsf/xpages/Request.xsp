@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom"
+	pageTitle="New DD1348-6 Heraldry Request">
+	<!-- Web entry form for the Request form (DD Form 1348-6). Bound to the Notes form so the field-level
+	     input translation formulas still run on save (computeWithForm="onsave"); validation is duplicated in SSJS
+	     because @Failure messages from computeWithForm are not user-friendly on the web. -->
+	<xp:this.resources>
+		<xp:script src="/HAASRequest.jss" clientSide="false" />
+	</xp:this.resources>
+	<xp:this.data>
+		<xp:dominoDocument var="reqDoc" formName="Request" computeWithForm="onsave" action="createDocument" />
+	</xp:this.data>
+	<xc:ccLayout pageName="New Request (DD Form 1348-6)" navSelection="request">
+		<xp:this.facets>
+			<xp:panel xp:key="content">
+				<xp:label value="DD FORM 1348-6 - DoD Single Line Item Requisition System Document (Manual-Long Form)" styleClass="haasFormTitle" />
+				<xp:text escape="true" styleClass="haasHelp" value="All fields marked * are required. Values are validated against the DODAAC/UIC directories on save." />
+
+				<xp:table styleClass="haasFormTable" border="1" cellpadding="3" cellspacing="0">
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="1. Requisitioner DODAAC *" for="DODAAC" /></xp:td>
+						<xp:td><xp:inputText id="DODAAC" value="#{reqDoc.DODAAC}" maxlength="6" size="8" styleClass="haasInput" style="text-transform:uppercase" /></xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="UIC *" for="UIC" /></xp:td>
+						<xp:td><xp:inputText id="UIC" value="#{reqDoc.UIC}" maxlength="6" size="8" styleClass="haasInput" style="text-transform:uppercase" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Unit Designation *" for="UnitName" /></xp:td>
+						<xp:td colspan="3"><xp:inputText id="UnitName" value="#{reqDoc.UnitName}" maxlength="120" size="60" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Type of Heraldic Item *" for="RequestType" /></xp:td>
+						<xp:td>
+							<xp:comboBox id="RequestType" value="#{reqDoc.RequestType}" styleClass="haasSelect">
+								<xp:selectItem itemLabel="-- select --" itemValue="" />
+								<xp:selectItems><xp:this.value><![CDATA[#{javascript:HAASRequest.REQUEST_TYPES}]]></xp:this.value></xp:selectItems>
+							</xp:comboBox>
+						</xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="Requisition Priority Designator *" for="RPD" /></xp:td>
+						<xp:td>
+							<xp:comboBox id="RPD" value="#{reqDoc.RPD}" defaultValue="13" styleClass="haasSelect">
+								<xp:selectItems><xp:this.value><![CDATA[#{javascript:HAASRequest.RPD_VALUES}]]></xp:this.value></xp:selectItems>
+							</xp:comboBox>
+						</xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Fund Code" for="FundCode" /></xp:td>
+						<xp:td><xp:inputText id="FundCode" value="#{reqDoc.FundCode}" maxlength="2" size="4" styleClass="haasInput" /></xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="Project Code" for="ProjectCode" /></xp:td>
+						<xp:td><xp:inputText id="ProjectCode" value="#{reqDoc.ProjectCode}" maxlength="3" size="5" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Ship-To DODAAC" for="ShipToDODAAC" /></xp:td>
+						<xp:td><xp:inputText id="ShipToDODAAC" value="#{reqDoc.ShipToDODAAC}" maxlength="6" size="8" styleClass="haasInput" /></xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="Ship-To Address *" for="ShipToAddress" /></xp:td>
+						<xp:td><xp:inputTextarea id="ShipToAddress" value="#{reqDoc.ShipToAddress}" rows="3" cols="45" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+				</xp:table>
+
+				<xp:label value="Requester Point of Contact" styleClass="haasH2" />
+				<xp:table styleClass="haasFormTable" border="1" cellpadding="3" cellspacing="0">
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Name *" for="RequesterName" /></xp:td>
+						<xp:td><xp:inputText id="RequesterName" value="#{reqDoc.RequesterName}" maxlength="80" size="40" styleClass="haasInput" /></xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="Rank" for="RequesterRank" /></xp:td>
+						<xp:td><xp:inputText id="RequesterRank" value="#{reqDoc.RequesterRank}" maxlength="10" size="8" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="E-mail (.mil/.gov) *" for="RequesterEmail" /></xp:td>
+						<xp:td><xp:inputText id="RequesterEmail" value="#{reqDoc.RequesterEmail}" maxlength="120" size="40" styleClass="haasInput" /></xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="Telephone" for="RequesterPhone" /></xp:td>
+						<xp:td><xp:inputText id="RequesterPhone" value="#{reqDoc.RequesterPhone}" maxlength="24" size="16" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+				</xp:table>
+
+				<xp:label value="Line Item (block 4-7)" styleClass="haasH2" />
+				<xp:table styleClass="haasFormTable" border="1" cellpadding="3" cellspacing="0">
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Catalog Item" for="ItemKey" /></xp:td>
+						<xp:td colspan="3">
+							<xp:comboBox id="ItemKey" value="#{viewScope.ItemKey}" styleClass="haasSelect">
+								<xp:selectItem itemLabel="-- exception data (non-NSN) --" itemValue="" />
+								<xp:selectItems><xp:this.value><![CDATA[#{javascript:@DbColumn(@DbName(), "HeraldicCatalog", 2)}]]></xp:this.value></xp:selectItems>
+							</xp:comboBox>
+						</xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Exception Data" for="ExceptionData" /></xp:td>
+						<xp:td colspan="3"><xp:inputText id="ExceptionData" value="#{viewScope.ExceptionData}" maxlength="250" size="70" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Quantity *" for="Quantity" /></xp:td>
+						<xp:td><xp:inputText id="Quantity" value="#{viewScope.Quantity}" maxlength="3" size="5" styleClass="haasInput" /></xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="Unit of Issue" for="UnitOfIssue" /></xp:td>
+						<xp:td>
+							<xp:comboBox id="UnitOfIssue" value="#{viewScope.UnitOfIssue}" defaultValue="EA" styleClass="haasSelect">
+								<xp:selectItems><xp:this.value><![CDATA[#{javascript:HAASRequest.UNITS_OF_ISSUE}]]></xp:this.value></xp:selectItems>
+							</xp:comboBox>
+						</xp:td>
+					</xp:tr>
+				</xp:table>
+
+				<xp:label value="Justification" styleClass="haasH2" />
+				<xp:inputTextarea id="Justification" value="#{reqDoc.Justification}" rows="5" cols="90" styleClass="haasInput" />
+
+				<xp:panel styleClass="haasButtonBar">
+					<xp:button value="Submit Request" id="btnSubmit" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete" immediate="false" save="false">
+							<xp:this.action><![CDATA[#{javascript:
+var h = {
+	DODAAC: getComponent("DODAAC").getValue(), UIC: getComponent("UIC").getValue(), RPD: getComponent("RPD").getValue(),
+	RequestType: getComponent("RequestType").getValue(), UnitName: getComponent("UnitName").getValue(),
+	RequesterName: getComponent("RequesterName").getValue(), RequesterRank: getComponent("RequesterRank").getValue(),
+	RequesterEmail: getComponent("RequesterEmail").getValue(), RequesterPhone: getComponent("RequesterPhone").getValue(),
+	ShipToAddress: getComponent("ShipToAddress").getValue(), Justification: getComponent("Justification").getValue()
+};
+var errors = HAASRequest.validateHeader(h);
+var line = { NSN: "", ExceptionData: viewScope.ExceptionData, Quantity: viewScope.Quantity, UnitOfIssue: viewScope.UnitOfIssue };
+var item = null;
+if (viewScope.ItemKey) {
+	var cat = database.getView("HeraldicCatalog").getDocumentByKey(viewScope.ItemKey, true);
+	if (cat !== null) { item = { MaxQtyPerRequest: cat.getItemValueInteger("MaxQtyPerRequest"), UnitPrice: cat.getItemValueDouble("UnitPrice"), StockNumber: cat.getItemValueString("StockNumber"), ItemName: cat.getItemValueString("ItemName") }; line.NSN = item.StockNumber; }
+}
+errors = errors.concat(HAASRequest.validateLine(line, item));
+if (errors.length > 0) {
+	for (var i = 0; i < errors.length; i++) { facesContext.addMessage(null, new javax.faces.application.FacesMessage(javax.faces.application.FacesMessage.SEVERITY_ERROR, errors[i], errors[i])); }
+	return false;
+}
+var now = new Date();
+var serial = HAASRequest.nextSerial("NextRequestSerial");
+var docNumber = HAASRequest.buildDocumentNumber(h.DODAAC, now, serial);
+var doc = reqDoc.getDocument(true);
+for (var k in h) { doc.replaceItemValue(k, h[k]); }
+doc.replaceItemValue("Form", "Request");
+doc.replaceItemValue("DocumentNumber", docNumber);
+doc.replaceItemValue("Status", "Submitted");
+doc.replaceItemValue("EnteredDate", session.createDateTime(now));
+doc.replaceItemValue("EnteredBy", context.getUser().getDistinguishedName());
+doc.replaceItemValue("RequesterKey", context.getUser().getDistinguishedName());
+doc.replaceItemValue("RequesterUNID", HAASRequest.ensureRequester(h));
+doc.replaceItemValue("StatusHistory", I18n.toString(now, "MM/dd/yyyy hh:mm a") + " (new) -> Submitted by " + context.getUser().getCommonName());
+doc.computeWithForm(false, false);
+doc.save(true, false);
+var ln = database.createDocument();
+ln.replaceItemValue("Form", "RequestLine");
+ln.makeResponse(doc);
+ln.replaceItemValue("ParentDocumentNumber", docNumber);
+ln.replaceItemValue("LineNumber", 1);
+ln.replaceItemValue("LineDocNumber", docNumber + "-01");
+ln.replaceItemValue("NSN", line.NSN);
+ln.replaceItemValue("ItemKey", viewScope.ItemKey || "");
+ln.replaceItemValue("ItemDescription", item !== null ? item.ItemName : line.ExceptionData);
+ln.replaceItemValue("ExceptionData", line.ExceptionData || "");
+ln.replaceItemValue("UnitOfIssue", line.UnitOfIssue);
+ln.replaceItemValue("Quantity", Number(line.Quantity));
+ln.replaceItemValue("UnitPrice", item !== null ? item.UnitPrice : 0);
+ln.replaceItemValue("ExtendedPrice", item !== null ? item.UnitPrice * Number(line.Quantity) : 0);
+ln.replaceItemValue("LineStatus", "Submitted");
+ln.computeWithForm(false, false);
+ln.save(true, false);
+doc.replaceItemValue("LineCount", 1);
+doc.replaceItemValue("TotalValue", ln.getItemValueDouble("ExtendedPrice"));
+doc.save(true, false);
+HAASRequest.flash("Request " + docNumber + " has been submitted. Record this document number for status inquiry.");
+context.redirectToPage("/ModifyRequest.xsp?documentId=" + doc.getUniversalID());
+}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+					<xp:button value="Cancel" id="btnCancel" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete" immediate="true">
+							<xp:this.action><xp:openPage name="/HeraldryHome.xsp" /></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+				</xp:panel>
+			</xp:panel>
+		</xp:this.facets>
+	</xc:ccLayout>
+</xp:view>

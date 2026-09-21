@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='RequestsByStatus' alias='ByStatus|vwStatus' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ default='true' showresponsehierarchy='true' showinmenu='true' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='false' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='true'
+ nomenu='false' uniquekeys='false' allowcustomizations='true'>
+<noteinfo noteid='13A' unid='A1B2C3D4E5F6A7B885258A1F00305C22' sequence='73'>
+<created><datetime>20040320T090000,00-05</datetime></created>
+<modified><datetime>20210419T101816,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name></updatedby>
+<code event='selection'><formula>SELECT (Form = "Request" | Form = "RequestLine") &amp; !@IsAvailable($Conflict) &amp; !@IsAvailable($Archived)</formula></code>
+<code event='queryopen'><lotusscript>Sub Queryopen(Source As Notesuiview, Continue As Variant)
+	' Vendors are redirected to their own queue; Readers fields already restrict rows.
+	Dim s As New NotesSession
+	Dim roles As Variant
+	roles = Evaluate("@UserRoles")
+	If IsMember(roles, "[Vendor]") And Not IsMember(roles, "[TACOM]") Then
+		Dim ws As New NotesUIWorkspace
+		Call ws.OpenDatabase("", s.CurrentDatabase.FilePath, "OpenVendorWork")
+		Continue = False
+	End If
+End Sub</lotusscript></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='New Request' icon='5'><code event='click'><formula>@Command([Compose]; "Request")</formula></code></action>
+<action title='Release Selected to Vendor' icon='83'><code event='hidewhen'><formula>!@IsMember("[TACOM]"; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; "ReleaseToVendor")</formula></code></action>
+<action title='Cancel Selected' icon='81'><code event='hidewhen'><formula>!@IsMember("[TACOM]"; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; "CancelRequest")</formula></code></action>
+<action title='Expand All' icon='11'><code event='click'><formula>@Command([ViewExpandAll])</formula></code></action>
+<action title='Collapse All' icon='12'><code event='click'><formula>@Command([ViewCollapseAll])</formula></code></action>
+</actionbar>
+<column itemname='StatusCategory' width='18' resizable='true' sort='ascending' categorized='true' twisties='true' showaslinks='false'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Status'/>
+<code event='value'><formula>@If(Form = "RequestLine"; ""; @Trim(Status) = ""; "(No Status)"; @Trim(Status))</formula></code>
+</column>
+<column itemname='DocumentNumber' width='16' resizable='true' sort='ascending' responsesonly='false' showaslinks='false'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Document Number'/>
+<code event='value'><formula>@If(Form = "RequestLine"; "    " + LineDocNumber; DocumentNumber)</formula></code>
+</column>
+<column itemname='$4' width='30' resizable='true' responsesonly='true'>
+<font size='9pt' name='Arial' style='italic' color='gray'/>
+<columnheader title=''/>
+<code event='value'><formula>"Line " + @Text(LineNumber) + ": " + @Text(Quantity) + " " + UnitOfIssue + " " + ItemDescription + " [" + LineStatus + "]"</formula></code>
+</column>
+<column itemname='DODAAC' width='8' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='DODAAC'/>
+<code event='value'><formula>DODAAC</formula></code>
+</column>
+<column itemname='UIC' width='8' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='UIC'/>
+<code event='value'><formula>UIC</formula></code>
+</column>
+<column itemname='UnitName' width='28' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Unit'/>
+<code event='value'><formula>UnitName</formula></code>
+</column>
+<column itemname='RequestType' width='14' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Type'/>
+<code event='value'><formula>RequestType</formula></code>
+</column>
+<column itemname='RPD' width='5' resizable='true' align='center'>
+<font size='9pt' name='Arial'/>
+<columnheader title='RPD'/>
+<code event='value'><formula>RPD</formula></code>
+</column>
+<column itemname='EnteredDate' width='10' resizable='true' sort='descending'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Entered'/>
+<code event='value'><formula>@Text(EnteredDate; "D0S0")</formula></code>
+</column>
+<column itemname='VendorName' width='18' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Vendor'/>
+<code event='value'><formula>@If(@Trim(VendorKey) = ""; ""; @Trim(VendorName) = ""; "(" + VendorKey + " - vendor record missing)"; VendorName)</formula></code>
+</column>
+<column itemname='TotalValue' width='10' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<numberformat format='currency' digits='2' punctuated='true' parens='false' percent='false'/>
+<columnheader title='Value'/>
+<code event='value'><formula>@If(Form = "RequestLine"; ExtendedPrice; TotalValue)</formula></code>
+</column>
+<item name='$Comment'><text>Primary staff view. Categorized on Status (free-text variants surface as separate categories - see DATA-QUALITY-NOTES). Response hierarchy shows RequestLines under the Request.</text></item>
+</view>

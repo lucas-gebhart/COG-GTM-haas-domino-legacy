@@ -1,0 +1,51 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+'   Agent: SendStatusMail
+'   Trigger: after new mail arrives / on document create or modify (server, runs every 15 minutes on HAAS-APP01)
+'   Purpose: send e-mail to the requester whenever the Status of a Request or SESFlagRequest changed since the
+'            last notification. Uses the NotifiedStatus field to avoid duplicate sends.
+Option Public
+Option Declare
+Use "HAASCommon"
+Use "HAASMail"
+
+'++LotusScript Development Environment:2:2:Initialize:1:10
+Sub Initialize
+	On Error GoTo ErrHandler
+	Dim s As New NotesSession
+	Dim db As NotesDatabase
+	Dim col As NotesDocumentCollection
+	Dim doc As NotesDocument
+	Dim st As String, notified As String
+	Dim sent As Integer, examined As Integer
+	Dim started As NotesDateTime
+
+	Set db = s.CurrentDatabase
+	Set started = New NotesDateTime(Now)
+	Set col = db.UnprocessedDocuments
+	Set doc = col.GetFirstDocument
+	While Not doc Is Nothing
+		examined = examined + 1
+		Select Case SafeGetText(doc, "Form")
+		Case "Request", "SESFlagRequest"
+			st = NormalizeStatus(SafeGetText(doc, "Status"))
+			notified = SafeGetText(doc, "NotifiedStatus")
+			If st <> "" And st <> notified And st <> STATUS_DRAFT Then
+				Call SendStatusNotification(doc, st)
+				Call doc.ReplaceItemValue("NotifiedStatus", st)
+				Call doc.ReplaceItemValue("NotifiedDate", Now)
+				' Save without bumping $Revisions noise for the users: MarkRead is irrelevant on web but harmless.
+				Call doc.Save(True, False, True)
+				sent = sent + 1
+			End If
+		Case Else
+			' RequestLine and others: nothing to do
+		End Select
+		Call s.UpdateProcessedDoc(doc)
+		Set doc = col.GetNextDocument(doc)
+	Wend
+	Call LogAgent("SendStatusMail", "Examined " & examined & ", sent " & sent & " in " & Format$(Now - started.LSLocalTime, "hh:nn:ss"))
+	Exit Sub
+ErrHandler:
+	Call LogAgent("SendStatusMail", "Error " & Err & " at line " & Erl & ": " & Error$)
+	Resume Next
+End Sub

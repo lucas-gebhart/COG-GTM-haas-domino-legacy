@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE agent SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<agent name='NightlyAging' xmlns='http://www.lotus.com/dxl' version='12.0' maintenanceversion='2.0'
+ replicaid='C1258A1F00305D71' designerversion='8.5.3' hide='v3 web' publicaccess='false' designerlock='false'
+ activatable='true' enabled='true' runasweb='true' allowremotedebugging='true' allowinvokeviaurl='true'
+ runonbehalfof='' onbehalfofinvoker='true'>
+<noteinfo noteid='4A6' unid='8B2C3D4E5F607182C1258A1F00305D71' sequence='16'>
+<created><datetime>20040611T160000,00-04</datetime></created>
+<modified><datetime>20220208T093311,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name><name>CN=HAAS-APP01/O=TACOM</name></updatedby>
+<designchange><datetime>20220208T093311,00-05</datetime></designchange>
+<lastrun><datetime>20260921T020000,00-04</datetime></lastrun>
+<rundata processeddocs='2841' exitcode='0'><runlog>Started running agent 'NightlyAging' on 09/21/2026 02:00:00 AM
+Ran LotusScript code
+Done running agent 'NightlyAging' on 09/21/2026 02:00:00 AM</runlog></rundata>
+<trigger type="scheduled"><schedule type="daily" runserver="CN=HAAS-APP01/O=TACOM"><starttime><time>T020000,00</time></starttime></schedule></trigger><documentset type="all"/>
+<runwhen server='CN=HAAS-APP01/O=TACOM'/>
+<code event='options'><lotusscript>' see agents/NightlyAging.lss</lotusscript></code>
+<code event='initialize'><lotusscript>' Source of this agent is maintained in agents/NightlyAging.lss (DXL export splits the LotusScript into the .lss file).</lotusscript></code>
+<item name='$Comment'><text>Compute DaysOpen / DaysInStage for every open case, set AgingFlag (Amber >60d, Red >75d per Profile) and mail the aging report. Populates the AgingCases view.</text></item>
+<item name='$Flags'><text>f3LQ</text></item>
+</agent>

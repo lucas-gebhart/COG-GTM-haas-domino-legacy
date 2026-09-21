@@ -1,0 +1,231 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='AwardsCase' alias='frmCase|Case' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ hide='web' bgcolor='white' noreplace='false' renderpassthrough='true' default='true'>
+<noteinfo noteid='11A' unid='2B7E9C41D6F84A0385258A1F00305D71' sequence='214'>
+<created><datetime>20040301T101500,00-05</datetime></created>
+<modified><datetime>20241118T101210,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name></updatedby>
+<!--
+  AwardsCase - one veteran awards fulfilment case. Created almost exclusively by the
+  ImportAuthorizationFile agent from an HRC/NPRC authorization record; CSRs create
+  cases manually only for walk-in/congressional inquiries (Source = "Manual").
+  AwardLine documents are responses (one per medal/decoration authorized).
+  Stage is the workflow key: Authorized -> Engraving -> Assembly/QC -> Warehouse -> Shipped -> Closed
+  (plus "On Hold" and "Cancelled"). Stage dates are stamped by the stage-advance actions below
+  and read by NightlyAging.
+-->
+<code event='windowtitle'><formula>@If(@IsNewDoc; "New Awards Case"; "Case " + CaseNumber + " - " + VeteranLastName + ", " + VeteranFirstName + " [" + Stage + "]")</formula></code>
+<code event='queryopen'><lotusscript>%REM
+	Form: AwardsCase  Event: Queryopen
+%END REM
+Option Public
+Option Declare
+Use "HAASCommon"
+Use "HAASAwards"
+Dim gSession As NotesSession
+Dim gOriginalStage As String
+
+Sub Queryopen(Source As Notesuidocument, Mode As Integer, Isnewdoc As Variant, Continue As Variant)
+	Set gSession = New NotesSession
+	If Not Isnewdoc Then
+		gOriginalStage = Source.Document.GetItemValue("Stage")(0)
+		If Mode = 1 And gOriginalStage = STAGE_CLOSED Then
+			If Not IsMember(Evaluate("@UserRoles"), "[Admin]") Then
+				Msgbox "Closed cases are read-only. Ask an administrator to reopen the case.", 48, "Veteran Medals &amp; Awards"
+				Continue = False
+			End If
+		End If
+	End If
+End Sub
+
+Sub Querysave(Source As Notesuidocument, Continue As Variant)
+	Dim doc As NotesDocument
+	Dim newStage As String
+	On Error GoTo ErrHandler
+	Set doc = Source.Document
+	newStage = doc.GetItemValue("Stage")(0)
+	If newStage &lt;&gt; gOriginalStage Then
+		If Not IsValidStageTransition(gOriginalStage, newStage) Then
+			Msgbox "Cannot move a case from '" &amp; gOriginalStage &amp; "' to '" &amp; newStage &amp; "'.", 16, "Veteran Medals &amp; Awards"
+			Continue = False
+			Exit Sub
+		End If
+		Call StampStageDate(doc, newStage)
+		Call AppendStatusHistory(doc, gOriginalStage, newStage, gSession.CommonUserName)
+	End If
+	Call doc.ReplaceItemValue("LastModifiedBy", gSession.UserName)
+	Call doc.ReplaceItemValue("LastModifiedDate", Now)
+	Exit Sub
+ErrHandler:
+	Msgbox "Error " &amp; Err &amp; " in AwardsCase.Querysave: " &amp; Error$ &amp; " (line " &amp; Erl &amp; ")", 16, "HAAS"
+	Continue = False
+	Exit Sub
+End Sub</lotusscript></code>
+
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'>
+<code event='hidewhen'><formula>Stage = "Closed" &amp; !@IsMember("[Admin]"; @UserRoles)</formula></code>
+<code event='click'><formula>@Command([EditDocument])</formula></code></action>
+<action title='Start Engraving' icon='14'>
+<code event='hidewhen'><formula>Stage != "Authorized" | !@IsMember("[CSR]":"[Engraver]":"[TACOM]"; @UserRoles)</formula></code>
+<code event='click'><formula>@If(@Prompt([YesNo]; "Advance Case"; "Move case " + CaseNumber + " to Engraving and create the engraving job?");
+	@Do(@Command([ToolsRunMacro]; "(AdvanceStage)"); @Command([ViewRefreshFields])); "")</formula></code></action>
+<action title='Engraving Complete' icon='14'>
+<code event='hidewhen'><formula>Stage != "Engraving" | !@IsMember("[Engraver]":"[TACOM]"; @UserRoles)</formula></code>
+<code event='click'><formula>@Command([ToolsRunMacro]; "(AdvanceStage)")</formula></code></action>
+<action title='QC Passed' icon='14'>
+<code event='hidewhen'><formula>Stage != "Assembly/QC" | !@IsMember("[Assembler]":"[TACOM]"; @UserRoles)</formula></code>
+<code event='click'><formula>@Command([ToolsRunMacro]; "(AdvanceStage)")</formula></code></action>
+<action title='Picked / Ready to Ship' icon='14'>
+<code event='hidewhen'><formula>Stage != "Warehouse" | !@IsMember("[Warehouse]":"[TACOM]"; @UserRoles)</formula></code>
+<code event='click'><formula>@Command([ToolsRunMacro]; "(AdvanceStage)")</formula></code></action>
+<action title='Close Case' icon='14'>
+<code event='hidewhen'><formula>Stage != "Shipped" | !@IsMember("[CSR]":"[TACOM]"; @UserRoles)</formula></code>
+<code event='click'><formula>@Command([ToolsRunMacro]; "(AdvanceStage)")</formula></code></action>
+<action title='Place On Hold' icon='84'>
+<code event='hidewhen'><formula>@IsMember(Stage; "Shipped":"Closed":"Cancelled":"On Hold") | !@IsMember("[CSR]":"[TACOM]"; @UserRoles)</formula></code>
+<code event='click'><formula>@Do(FIELD HoldReason := @Prompt([OkCancelEdit]; "Place On Hold"; "Reason (address verification, NOK documentation, HRC query):"; ""); FIELD StageBeforeHold := Stage; FIELD Stage := "On Hold"; @Command([FileSave]))</formula></code></action>
+<action title='Add Case Note' icon='38'><code event='click'><formula>@Command([Compose]; "CaseNote")</formula></code></action>
+<action title='Print Packing Slip' icon='23'>
+<code event='hidewhen'><formula>!@IsMember(Stage; "Warehouse":"Shipped":"Closed")</formula></code>
+<code event='click'><formula>@Command([FilePrint]; "1"; "0"; "PackingSlip")</formula></code></action>
+</actionbar>
+
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='14pt' style='bold' name='Verdana' color='navy'/>Veteran Awards Case</run></par>
+<table widthtype='fitmargins' refwidth='7in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#eef2f7'>
+<tablecolumn width='18%'/><tablecolumn width='32%'/><tablecolumn width='18%'/><tablecolumn width='32%'/>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Case Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computedwhencomposed' name='CaseNumber' description='VMA-YYYY-NNNNNN'>
+<code event='value'><formula>@If(CaseNumber != ""; CaseNumber; "VMA-" + @Text(@Year(@Now)) + "-" + @Right("000000" + @Text(@GetProfileField("Profile"; "NextCaseSerial")); 6))</formula></code></field></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Stage</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Stage' allowmultivalues='false'>
+<keywords ui='combobox' allownew='false'><textlist><text>Authorized</text><text>Engraving</text><text>Assembly/QC</text><text>Warehouse</text><text>Shipped</text><text>Closed</text><text>On Hold</text><text>Cancelled</text></textlist></keywords>
+<code event='defaultvalue'><formula>"Authorized"</formula></code>
+<code event='inputvalidation'><formula>@If(!@IsMember(Stage; "Authorized":"Engraving":"Assembly/QC":"Warehouse":"Shipped":"Closed":"On Hold":"Cancelled"); @Failure("Stage is not a recognised workflow stage."); @Success)</formula></code></field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Source</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Source'><keywords ui='combobox' allownew='false'><textlist><text>HRC</text><text>NPRC</text><text>Manual</text><text>Congressional</text></textlist></keywords><code event='defaultvalue'><formula>"Manual"</formula></code></field></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Authorization File</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='AuthFileName' description='Name of the HRC/NPRC transmission file that created this case'/><run> #</run><field type='number' kind='editable' name='AuthFileLine'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/></field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Authorization Date</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='AuthorizationDate' description='Date HRC/NPRC authorized the awards (mixed formats in old data)'>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never' dateformat='weekdaymonthdayyear' dayformat='twodigitday' monthformat='twodigitmonth' yearformat='fourdigityear'/>
+<code event='inputvalidation'><formula>@If(@Text(AuthorizationDate) = ""; @Failure("Authorization date is required."); AuthorizationDate &gt; @Today; @Failure("Authorization date cannot be in the future."); AuthorizationDate &lt; [01/01/2000]; @Failure("Authorization date before 2000 - verify the file."); @Success)</formula></code></field></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Entered</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='computedwhencomposed' name='EnteredDate'><datetimeformat show='datetime' date='monthdayyear' time='hourminute' zone='never'/><code event='value'><formula>@Now</formula></code></field><run> by </run><field type='names' kind='computedwhencomposed' name='EnteredBy'><code event='value'><formula>@UserName</formula></code></field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Priority</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Priority'><keywords ui='radiobutton' columns='3'><textlist><text>Routine</text><text>Expedite</text><text>Congressional</text></textlist></keywords><code event='defaultvalue'><formula>"Routine"</formula></code></field></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Service Number / SSN (last 4)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ServiceNumber' description='Legacy: full synthetic SSN in old records; last-4 only since 2012'>
+<code event='inputtranslation'><formula>@Trim(ServiceNumber)</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(ServiceNumber) = ""; @Success; @Length(ServiceNumber) = 4 &amp; @Matches(ServiceNumber; "{0-9}{0-9}{0-9}{0-9}"); @Success; @Matches(ServiceNumber; "{0-9}{0-9}{0-9}-{0-9}{0-9}-{0-9}{0-9}{0-9}{0-9}"); @Success; @Failure("Enter the last 4 digits of the SSN or a legacy service number (999-99-9999)."))</formula></code></field></par></tablecell>
+</tablerow>
+</table>
+
+<pardef id='2' leftmargin='0'/>
+<par def='2'><run><font size='11pt' style='bold' name='Verdana' color='navy'/>Veteran</run></par>
+<table widthtype='fitmargins' refwidth='7in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='18%'/><tablecolumn width='32%'/><tablecolumn width='18%'/><tablecolumn width='32%'/>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Last Name</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='VeteranLastName'><code event='inputtranslation'><formula>@ProperCase(@Trim(VeteranLastName))</formula></code><code event='inputvalidation'><formula>@If(@Trim(VeteranLastName) = ""; @Failure("Veteran last name is required."); @Length(VeteranLastName) &gt; 60; @Failure("Last name may not exceed 60 characters."); @Success)</formula></code></field></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>First Name / MI</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='VeteranFirstName'><code event='inputvalidation'><formula>@If(@Trim(VeteranFirstName) = ""; @Failure("Veteran first name is required."); @Success)</formula></code></field><run> </run><field type='text' kind='editable' name='VeteranMI'><code event='inputtranslation'><formula>@UpperCase(@Left(@Trim(VeteranMI); 1))</formula></code></field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Rank / Grade</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='VeteranRank'/></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Branch / Component</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Branch'><keywords ui='combobox' allownew='true'><textlist><text>Regular Army</text><text>Army Reserve</text><text>Army National Guard</text><text>Army Air Forces</text><text>Women's Army Corps</text></textlist></keywords></field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Service Dates</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='ServiceFrom'><datetimeformat show='date' date='monthdayyear'/></field><run> to </run><field type='datetime' kind='editable' name='ServiceTo'><datetimeformat show='date' date='monthdayyear'/><code event='inputvalidation'><formula>@If(@Text(ServiceFrom) != "" &amp; @Text(ServiceTo) != "" &amp; ServiceTo &lt; ServiceFrom; @Failure("Service end date is before start date."); @Success)</formula></code></field></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Conflict / Era</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Era' allowmultivalues='true'><keywords ui='combobox' allownew='true'><textlist><text>World War II</text><text>Korea</text><text>Vietnam</text><text>Cold War</text><text>Gulf War</text><text>Global War on Terrorism</text><text>Peacetime</text></textlist></keywords></field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Deceased</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Deceased'><keywords ui='radiobutton' columns='2'><textlist><text>Yes</text><text>No</text></textlist></keywords><code event='defaultvalue'><formula>"No"</formula></code></field></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Requester (veteran or NOK)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='RequesterKey' description='Key of the Requester document (LookupKey). Duplicates exist.'>
+<code event='inputvalidation'><formula>@If(@Trim(RequesterKey) = ""; @Failure("A requester (veteran or next of kin) must be linked to the case."); @Success)</formula></code></field><run> </run><field type='text' kind='computed' name='RequesterName'><code event='value'><formula>@If(@Trim(RequesterKey) = ""; ""; @DbLookup("Notes":"NoCache"; ""; "CSRLookup"; RequesterKey; 2))</formula></code></field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Relationship</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Relationship'><keywords ui='combobox' allownew='true'><textlist><text>Self</text><text>Spouse</text><text>Son</text><text>Daughter</text><text>Parent</text><text>Sibling</text><text>Grandchild</text><text>Other NOK</text></textlist></keywords><code event='defaultvalue'><formula>"Self"</formula></code></field></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Assigned CSR</run></par></tablecell>
+<tablecell><par def='1'><field type='names' kind='editable' name='AssignedCSR'><code event='defaultvalue'><formula>@UserName</formula></code></field></par></tablecell>
+</tablerow>
+</table>
+
+<par def='2'><run><font size='11pt' style='bold' name='Verdana' color='navy'/>Awards Authorized</run><run> (AwardLine response documents - use the embedded view; add lines with the button)</run></par>
+<par def='1'><embeddedview showactionbar='false' hidewhen='none' name='(CaseLines)' allowcreation='false' expandall='true'/></par>
+<par def='1'><button width='2in' widthtype='fixed'><code event='click'><formula>@Command([Compose]; "AwardLine")</formula></code>Add Award Line</button>
+<run> </run><field type='number' kind='computed' name='LineCount'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/><code event='value'><formula>@Elements(@DbLookup("Notes":"NoCache"; ""; "(CaseLines)"; CaseNumber; 1))</formula></code></field><run> line(s); engraving required: </run><field type='keyword' kind='computed' name='EngravingRequired'><keywords ui='combobox'><textlist><text>Yes</text><text>No</text></textlist></keywords><code event='value'><formula>@If(@IsError(@DbLookup("Notes":"NoCache"; ""; "(CaseLines)"; CaseNumber; "Engrave")); "No"; @IsMember("Yes"; @DbLookup("Notes":"NoCache"; ""; "(CaseLines)"; CaseNumber; "Engrave")); "Yes"; "No")</formula></code></field></par>
+
+<pardef id='3' hide='read edit print preview'><code event='hidewhen'><formula>!@IsMember("[CSR]":"[TACOM]":"[Engraver]":"[Assembler]":"[Warehouse]":"[Admin]"; @UserRoles)</formula></code></pardef>
+<par def='3'><run><font size='11pt' style='bold' name='Verdana' color='navy'/>Fulfilment</run></par>
+<table widthtype='fitmargins' refwidth='7in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#fff8e6'>
+<tablecolumn width='18%'/><tablecolumn width='32%'/><tablecolumn width='18%'/><tablecolumn width='32%'/>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Engraving Started</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='EngravingDate'><datetimeformat show='date' date='monthdayyear'/></field><run> job </run><field type='text' kind='editable' name='EngravingJobNumber'/></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Assembly / QC</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='AssemblyDate'><datetimeformat show='date' date='monthdayyear'/></field><run> QC: </run><field type='keyword' kind='editable' name='QCResult'><keywords ui='combobox' allownew='false'><textlist><text></text><text>Pass</text><text>Fail - Rework</text></textlist></keywords></field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Warehouse Pick</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='WarehouseDate'><datetimeformat show='date' date='monthdayyear'/></field><run> bin </run><field type='text' kind='editable' name='PickBin'/></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Shipped</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='ShippedDate'><datetimeformat show='date' date='monthdayyear'/></field><run> </run><field type='text' kind='editable' name='TrackingNumber' description='USPS/FedEx tracking; copied from ShipmentRecord'/></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Closed</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='ClosedDate'><datetimeformat show='date' date='monthdayyear'/></field></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Days Open</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='computed' name='DaysOpen'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/>
+<code event='value'><formula>@If(@Text(ClosedDate) != ""; @Integer((ClosedDate - EnteredDate) / 86400); @Integer((@Now - EnteredDate) / 86400))</formula></code></field><run>  Aging: </run><field type='keyword' kind='editable' name='AgingFlag' description='Set by NightlyAging: "" | Amber (&gt;60d) | Red (&gt;75d)'><keywords ui='combobox' allownew='true'><textlist><text></text><text>Amber</text><text>Red</text></textlist></keywords></field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Hold Reason</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='HoldReason'/></par></tablecell>
+<tablecell><par def='1'><run><font style='bold' size='9pt'/>Stage Before Hold</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='StageBeforeHold'/></par></tablecell>
+</tablerow>
+</table>
+
+<par def='2'><run><font size='11pt' style='bold' name='Verdana' color='navy'/>Ship-To (synthetic PII)</run></par>
+<par def='1'><field type='text' kind='editable' name='ShipToName'/><run>, </run><field type='text' kind='editable' name='ShipToStreet'/><run>, </run><field type='text' kind='editable' name='ShipToCity'/><run>, </run><field type='text' kind='editable' name='ShipToState'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(ShipToState))</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(ShipToState) = ""; @Success; @Length(ShipToState) != 2; @Failure("State must be a 2-letter postal abbreviation."); @Success)</formula></code></field><run> </run><field type='text' kind='editable' name='ShipToZIP'>
+<code event='inputvalidation'><formula>@If(@Trim(ShipToZIP) = ""; @Success; @Matches(ShipToZIP; "{0-9}{0-9}{0-9}{0-9}{0-9}") | @Matches(ShipToZIP; "{0-9}{0-9}{0-9}{0-9}{0-9}-{0-9}{0-9}{0-9}{0-9}"); @Success; @Failure("ZIP must be 99999 or 99999-9999."))</formula></code></field></par>
+
+<par def='2'><run><font size='11pt' style='bold' name='Verdana' color='navy'/>CSR Remarks</run></par>
+<par def='1'><field type='richtext' kind='editable' name='Remarks'/></par>
+<par def='1'><run><font size='8pt' color='gray'/>Status history:</run></par>
+<par def='1'><field type='text' kind='computed' name='StatusHistory' allowmultivalues='true' listdisplayseparator='newline'><code event='value'><formula>StatusHistory</formula></code></field></par>
+
+<pardef id='4' hide='read edit print preview'/>
+<par def='4'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true'><code event='value'><formula>@Trim(@Unique("[TACOM]":"[CSR]":"[Engraver]":"[Assembler]":"[Warehouse]":"[Admin]":"[ReadOnlyAudit]":"LocalDomainServers":AssignedCSR))</formula></code></field></par>
+<par def='4'><field type='names' kind='computed' name='DocAuthors' authors='true' allowmultivalues='true'><code event='value'><formula>@If(Stage = "Authorized"; "[CSR]":"[TACOM]":"[Admin]"; Stage = "Engraving"; "[Engraver]":"[TACOM]":"[Admin]"; Stage = "Assembly/QC"; "[Assembler]":"[TACOM]":"[Admin]"; Stage = "Warehouse" | Stage = "Shipped"; "[Warehouse]":"[CSR]":"[TACOM]":"[Admin]"; "[TACOM]":"[Admin]")</formula></code></field></par>
+<par def='4'><field type='text' kind='computed' name='LookupKey'><code event='value'><formula>@UpperCase(CaseNumber) : @UpperCase(VeteranLastName + ", " + VeteranFirstName) : @Right(ServiceNumber; 4)</formula></code></field></par>
+<par def='4'><field type='number' kind='computed' name='DaysInStage'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/><code event='value'><formula>@Integer((@Now - @If(Stage = "Engraving"; EngravingDate; Stage = "Assembly/QC"; AssemblyDate; Stage = "Warehouse"; WarehouseDate; Stage = "Shipped"; ShippedDate; EnteredDate)) / 86400)</formula></code></field></par>
+<par def='4'><field type='text' kind='computed' name='LastModifiedBy'><code event='value'><formula>LastModifiedBy</formula></code></field><field type='datetime' kind='computed' name='LastModifiedDate'><code event='value'><formula>LastModifiedDate</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+<item name='$Info'><rawitemdata type='1'>gAQAAAAAAAAAAAAAAAAA</rawitemdata></item>
+<item name='$$ScriptName' summary='false' sign='true'><text>AwardsCase</text></item>
+</form>

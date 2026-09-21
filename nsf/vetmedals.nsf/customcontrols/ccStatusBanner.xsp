@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom">
+	<!-- ccStatusBanner: shows sessionScope.haasMessage (info) / sessionScope.haasError (error) once, then clears them.
+	     Error text is rendered in the classic Domino "HTTP Web Server: Lotus Notes Exception" style on purpose. -->
+	<xp:panel id="statusBanner" styleClass="haasBannerWrap">
+		<xp:panel styleClass="haasInfoBanner" rendered="#{javascript:sessionScope.haasMessage != null &amp;&amp; sessionScope.haasMessage != ''}">
+			<xp:image url="/info16.gif" alt="" />
+			<xp:text escape="true" value="#{javascript:var m = sessionScope.haasMessage; sessionScope.haasMessage = null; m}" />
+		</xp:panel>
+		<xp:panel styleClass="haasErrorBanner" rendered="#{javascript:sessionScope.haasError != null &amp;&amp; sessionScope.haasError != ''}">
+			<xp:text escape="true" value="Error" styleClass="haasErrorTitle" />
+			<xp:br />
+			<xp:text escape="true" value="#{javascript:var e = sessionScope.haasError; sessionScope.haasError = null; e}" />
+		</xp:panel>
+		<xp:messages id="xspMessages" styleClass="haasValidationList" layout="list" showDetail="true" showSummary="true" globalOnly="false" />
+	</xp:panel>
+</xp:view>

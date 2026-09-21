@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom"
+	pageTitle="SES Flag Request">
+	<xp:this.resources>
+		<xp:script src="/HAASRequest.jss" clientSide="false" />
+	</xp:this.resources>
+	<xp:this.data>
+		<xp:dominoDocument var="sesDoc" formName="SESFlagRequest" computeWithForm="onsave" action="createDocument" />
+		<xp:dominoView var="vwQueue" viewName="SESFlagQueue" />
+	</xp:this.data>
+	<xc:ccLayout pageName="Senior Executive Service Flag Request" navSelection="ses">
+		<xp:this.facets>
+			<xp:panel xp:key="content">
+				<xp:label value="SES Positional Color Request" styleClass="haasH1" />
+				<xp:text escape="true" styleClass="haasHelp" value="SES flags are individually authorized. Requests are reviewed by the SES approver before release to the vendor. Limit 2 per executive per request." />
+				<xp:table styleClass="haasFormTable" border="1" cellpadding="3" cellspacing="0">
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Executive Name *" for="ExecutiveName" /></xp:td>
+						<xp:td><xp:inputText id="ExecutiveName" value="#{sesDoc.ExecutiveName}" maxlength="80" size="40" styleClass="haasInput" /></xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="SES Tier *" for="ExecutiveTier" /></xp:td>
+						<xp:td>
+							<xp:radioGroup id="ExecutiveTier" value="#{sesDoc.ExecutiveTier}" layout="lineDirection">
+								<xp:selectItem itemLabel="Tier 1" itemValue="Tier 1" /><xp:selectItem itemLabel="Tier 2" itemValue="Tier 2" /><xp:selectItem itemLabel="Tier 3" itemValue="Tier 3" />
+							</xp:radioGroup>
+						</xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Title / Position *" for="ExecutiveTitle" /></xp:td>
+						<xp:td><xp:inputText id="ExecutiveTitle" value="#{sesDoc.ExecutiveTitle}" maxlength="120" size="40" styleClass="haasInput" /></xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="Organization *" for="Organization" /></xp:td>
+						<xp:td><xp:inputText id="Organization" value="#{sesDoc.Organization}" maxlength="120" size="40" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Flag Type *" for="FlagType" /></xp:td>
+						<xp:td>
+							<xp:comboBox id="FlagType" value="#{sesDoc.FlagType}" styleClass="haasSelect">
+								<xp:selectItem itemLabel="SES Positional Color (Indoor)" itemValue="SES Positional Color (Indoor)" />
+								<xp:selectItem itemLabel="SES Positional Color (Outdoor)" itemValue="SES Positional Color (Outdoor)" />
+								<xp:selectItem itemLabel="SES Automobile Flag" itemValue="SES Automobile Flag" />
+								<xp:selectItem itemLabel="SES Desk Flag Set" itemValue="SES Desk Flag Set" />
+								<xp:selectItem itemLabel="Replacement Fringe/Cord" itemValue="Replacement Fringe/Cord" />
+							</xp:comboBox>
+						</xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="Quantity *" for="Quantity" /></xp:td>
+						<xp:td><xp:inputText id="Quantity" value="#{sesDoc.Quantity}" maxlength="1" size="3" defaultValue="1" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="DODAAC *" for="DODAAC" /></xp:td>
+						<xp:td><xp:inputText id="DODAAC" value="#{sesDoc.DODAAC}" maxlength="6" size="8" styleClass="haasInput" /></xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="Justification *" for="Justification" /></xp:td>
+						<xp:td><xp:inputText id="Justification" value="#{sesDoc.Justification}" maxlength="250" size="40" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="Ship-To Address *" for="ShipToAddress" /></xp:td>
+						<xp:td colspan="3"><xp:inputTextarea id="ShipToAddress" value="#{sesDoc.ShipToAddress}" rows="3" cols="70" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel"><xp:label value="POC Name *" for="RequesterName" /></xp:td>
+						<xp:td><xp:inputText id="RequesterName" value="#{sesDoc.RequesterName}" maxlength="80" size="40" styleClass="haasInput" /></xp:td>
+						<xp:td styleClass="haasLabel"><xp:label value="POC E-mail *" for="RequesterEmail" /></xp:td>
+						<xp:td><xp:inputText id="RequesterEmail" value="#{sesDoc.RequesterEmail}" maxlength="120" size="40" styleClass="haasInput" /></xp:td>
+					</xp:tr>
+				</xp:table>
+				<xp:panel styleClass="haasButtonBar">
+					<xp:button value="Submit for Approval" id="btnSubmit" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:
+var errors = [];
+var d = sesDoc;
+if (!d.getItemValueString("ExecutiveName")) errors.push("Executive name is required.");
+if (!d.getItemValueString("ExecutiveTitle")) errors.push("Executive title is required.");
+if (["Tier 1","Tier 2","Tier 3"].indexOf(d.getItemValueString("ExecutiveTier")) < 0) errors.push("Select the SES tier.");
+if (!d.getItemValueString("Organization")) errors.push("Organization is required.");
+var q = Number(d.getItemValueString("Quantity"));
+if (isNaN(q) || q < 1) errors.push("Quantity must be at least 1."); else if (q > 2) errors.push("SES flag requests are limited to 2 per executive per request.");
+var dod = d.getItemValueString("DODAAC").toUpperCase();
+if (!HAASRequest.isValidDODAAC(dod)) errors.push("DODAAC must be 6 alphanumeric characters.");
+if (!d.getItemValueString("ShipToAddress")) errors.push("Ship-to address is required.");
+if (!d.getItemValueString("Justification")) errors.push("Justification is required (new appointment, replacement, relocation).");
+if (!d.getItemValueString("RequesterName")) errors.push("Requester name is required.");
+if (!HAASRequest.isMilGovEmail(d.getItemValueString("RequesterEmail"))) errors.push("E-mail must be a .mil or .gov address.");
+if (errors.length) { for (var i = 0; i < errors.length; i++) facesContext.addMessage(null, new javax.faces.application.FacesMessage(javax.faces.application.FacesMessage.SEVERITY_ERROR, errors[i], errors[i])); return false; }
+var serial = HAASRequest.nextSerial("NextSESSerial");
+var num = "SES-" + new Date().getFullYear() + "-" + ("0000" + serial).slice(-4);
+d.replaceItemValue("SESFlagNumber", num);
+d.replaceItemValue("DODAAC", dod);
+d.replaceItemValue("Status", "Submitted");
+d.replaceItemValue("EnteredDate", session.createDateTime(new Date()));
+d.replaceItemValue("EnteredBy", context.getUser().getDistinguishedName());
+d.save();
+HAASRequest.flash("SES flag request " + num + " submitted for approval.");
+context.redirectToPage("/SESFlag.xsp");}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+				</xp:panel>
+
+				<xp:label value="SES Flag Queue" styleClass="haasH2" />
+				<xp:viewPanel rows="15" id="vpQueue" var="rowData" value="#{vwQueue}" styleClass="haasView" showColumnHeader="true">
+					<xp:viewColumn columnName="Status"><xp:viewColumnHeader value="Status" /></xp:viewColumn>
+					<xp:viewColumn columnName="SESFlagNumber"><xp:viewColumnHeader value="SES Flag Number" /></xp:viewColumn>
+					<xp:viewColumn columnName="ExecutiveName"><xp:viewColumnHeader value="Executive" /></xp:viewColumn>
+					<xp:viewColumn columnName="Organization"><xp:viewColumnHeader value="Organization" /></xp:viewColumn>
+					<xp:viewColumn columnName="FlagType"><xp:viewColumnHeader value="Flag Type" /></xp:viewColumn>
+					<xp:viewColumn columnName="EnteredDate"><xp:viewColumnHeader value="Entered" /></xp:viewColumn>
+				</xp:viewPanel>
+			</xp:panel>
+		</xp:this.facets>
+	</xc:ccLayout>
+</xp:view>

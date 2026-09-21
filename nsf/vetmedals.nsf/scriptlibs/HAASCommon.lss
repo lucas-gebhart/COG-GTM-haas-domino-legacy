@@ -1,0 +1,253 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+' HAASCommon (vetmedals.nsf copy)
+' NOTE: this library was copied from heraldry.nsf in 2004 and has drifted; the two copies
+' are NOT identical (see README-design.md "Known warts" #7). Shared helpers for the awards agents.
+Option Public
+Option Declare
+
+'++LotusScript Development Environment:2:5:(Forward):0:1
+Declare Function GetProfileValue(db As NotesDatabase, fieldName As String) As Variant
+Declare Function GetProfileText(db As NotesDatabase, fieldName As String, defaultValue As String) As String
+Declare Function GetProfileNumber(db As NotesDatabase, fieldName As String, defaultValue As Long) As Long
+Declare Function IsMember(arr As Variant, value As String) As Boolean
+Declare Sub AppendStatusHistory(doc As NotesDocument, fromStage As String, toStage As String, who As String)
+Declare Sub LogAgent(agentName As String, msg As String)
+Declare Function NextSerial(db As NotesDatabase, counterField As String) As Long
+Declare Function SafeGetText(doc As NotesDocument, itemName As String) As String
+Declare Function SafeGetDate(doc As NotesDocument, itemName As String) As Variant
+Declare Function ParseLegacyDate(raw As String) As Variant
+Declare Function DaysBetween(d1 As Variant, d2 As Variant) As Long
+Declare Function PadLeft(s As String, width As Integer, ch As String) As String
+Declare Sub StampAgentRun(db As NotesDatabase, stampField As String)
+
+'++LotusScript Development Environment:2:5:(Declarations):0:10
+Const APP_TITLE = "Veteran Medals & Awards"
+Const LOG_DB = "haas\haaslog.nsf"
+Const PROFILE_FORM = "Profile"
+
+' Workflow stages (the order matters - see IsValidStageTransition in HAASAwards)
+Const STAGE_AUTHORIZED = "Authorized"
+Const STAGE_ENGRAVING = "Engraving"
+Const STAGE_ASSEMBLY = "Assembly/QC"
+Const STAGE_WAREHOUSE = "Warehouse"
+Const STAGE_SHIPPED = "Shipped"
+Const STAGE_CLOSED = "Closed"
+Const STAGE_HOLD = "On Hold"
+Const STAGE_CANCELLED = "Cancelled"
+
+Const AGING_AMBER_DEFAULT = 60
+Const AGING_RED_DEFAULT = 75
+
+'++LotusScript Development Environment:2:1:GetProfileValue:1:8
+Function GetProfileValue(db As NotesDatabase, fieldName As String) As Variant
+	Dim prof As NotesDocument
+	On Error GoTo ErrHandler
+	Set prof = db.GetProfileDocument(PROFILE_FORM)
+	If prof.HasItem(fieldName) Then
+		GetProfileValue = prof.GetItemValue(fieldName)
+	Else
+		GetProfileValue = Null
+	End If
+	Exit Function
+ErrHandler:
+	GetProfileValue = Null
+	Exit Function
+End Function
+
+'++LotusScript Development Environment:2:1:GetProfileText:1:8
+Function GetProfileText(db As NotesDatabase, fieldName As String, defaultValue As String) As String
+	Dim v As Variant
+	v = GetProfileValue(db, fieldName)
+	If IsNull(v) Then
+		GetProfileText = defaultValue
+	ElseIf IsArray(v) Then
+		If UBound(v) < 0 Or Trim(CStr(v(0))) = "" Then GetProfileText = defaultValue Else GetProfileText = CStr(v(0))
+	Else
+		GetProfileText = CStr(v)
+	End If
+End Function
+
+'++LotusScript Development Environment:2:1:GetProfileNumber:1:8
+Function GetProfileNumber(db As NotesDatabase, fieldName As String, defaultValue As Long) As Long
+	Dim v As Variant
+	v = GetProfileValue(db, fieldName)
+	If IsNull(v) Then
+		GetProfileNumber = defaultValue
+	ElseIf IsArray(v) Then
+		If UBound(v) < 0 Then
+			GetProfileNumber = defaultValue
+		ElseIf IsNumeric(v(0)) Then
+			GetProfileNumber = CLng(v(0))
+		Else
+			GetProfileNumber = defaultValue
+		End If
+	Else
+		GetProfileNumber = defaultValue
+	End If
+End Function
+
+'++LotusScript Development Environment:2:1:IsMember:1:8
+Function IsMember(arr As Variant, value As String) As Boolean
+	Dim i As Integer
+	IsMember = False
+	If Not IsArray(arr) Then Exit Function
+	For i = LBound(arr) To UBound(arr)
+		If UCase(Trim(CStr(arr(i)))) = UCase(Trim(value)) Then
+			IsMember = True
+			Exit Function
+		End If
+	Next
+End Function
+
+'++LotusScript Development Environment:2:2:AppendStatusHistory:1:8
+Sub AppendStatusHistory(doc As NotesDocument, fromStage As String, toStage As String, who As String)
+	' StatusHistory is a multi-value text item: "MM/DD/YYYY HH:MM | from -> to | user"
+	Dim item As NotesItem
+	Dim entry As String
+	entry = Format$(Now, "mm/dd/yyyy hh:nn") & " | " & fromStage & " -> " & toStage & " | " & who
+	If doc.HasItem("StatusHistory") Then
+		Set item = doc.GetFirstItem("StatusHistory")
+		Call item.AppendToTextList(entry)
+	Else
+		Call doc.ReplaceItemValue("StatusHistory", entry)
+	End If
+End Sub
+
+'++LotusScript Development Environment:2:2:LogAgent:1:8
+Sub LogAgent(agentName As String, msg As String)
+	' Writes to the console AND to haaslog.nsf if it can be opened; never raises.
+	Dim s As NotesSession
+	Dim logDb As NotesDatabase
+	Dim logDoc As NotesDocument
+	On Error GoTo Quiet
+	Set s = New NotesSession
+	Print "[" & agentName & "] " & msg
+	Set logDb = s.GetDatabase(s.CurrentDatabase.Server, LOG_DB)
+	If logDb.IsOpen Then
+		Set logDoc = logDb.CreateDocument
+		Call logDoc.ReplaceItemValue("Form", "AgentLog")
+		Call logDoc.ReplaceItemValue("Agent", agentName)
+		Call logDoc.ReplaceItemValue("SourceDb", s.CurrentDatabase.FilePath)
+		Call logDoc.ReplaceItemValue("Message", msg)
+		Call logDoc.ReplaceItemValue("LogTime", Now)
+		Call logDoc.ReplaceItemValue("RunBy", s.UserName)
+		Call logDoc.Save(True, False)
+	End If
+	Exit Sub
+Quiet:
+	Exit Sub
+End Sub
+
+'++LotusScript Development Environment:2:1:NextSerial:1:8
+Function NextSerial(db As NotesDatabase, counterField As String) As Long
+	' Read-increment-save on the profile document. Not transactional - two agents running
+	' concurrently (e.g. two importers) can and do produce duplicate serials (wart #9).
+	Dim prof As NotesDocument
+	Dim n As Long
+	Set prof = db.GetProfileDocument(PROFILE_FORM)
+	n = GetProfileNumber(db, counterField, 1)
+	Call prof.ReplaceItemValue(counterField, n + 1)
+	Call prof.Save(True, False)
+	NextSerial = n
+End Function
+
+'++LotusScript Development Environment:2:1:SafeGetText:1:8
+Function SafeGetText(doc As NotesDocument, itemName As String) As String
+	On Error GoTo ErrHandler
+	If doc.HasItem(itemName) Then
+		SafeGetText = CStr(doc.GetItemValue(itemName)(0))
+	Else
+		SafeGetText = ""
+	End If
+	Exit Function
+ErrHandler:
+	SafeGetText = ""
+	Exit Function
+End Function
+
+'++LotusScript Development Environment:2:1:SafeGetDate:1:8
+Function SafeGetDate(doc As NotesDocument, itemName As String) As Variant
+	' Returns a Variant date, or Null. Handles the pre-2009 text dates.
+	Dim v As Variant
+	On Error GoTo ErrHandler
+	SafeGetDate = Null
+	If Not doc.HasItem(itemName) Then Exit Function
+	v = doc.GetItemValue(itemName)
+	If Not IsArray(v) Then Exit Function
+	If UBound(v) < 0 Then Exit Function
+	If IsDate(v(0)) And Not (TypeName(v(0)) = "STRING") Then
+		SafeGetDate = CDat(v(0))
+	ElseIf TypeName(v(0)) = "STRING" Then
+		SafeGetDate = ParseLegacyDate(CStr(v(0)))
+	End If
+	Exit Function
+ErrHandler:
+	SafeGetDate = Null
+	Exit Function
+End Function
+
+'++LotusScript Development Environment:2:1:ParseLegacyDate:1:8
+Function ParseLegacyDate(raw As String) As Variant
+	' Accepts "3/4/2008", "03/04/2008", "2008-03-04", "04 MAR 08", "20080304". Returns Null if unparseable.
+	Dim s As String
+	Dim parts As Variant
+	Dim months As Variant
+	Dim i As Integer
+	Dim yy As Integer
+	On Error GoTo Bad
+	ParseLegacyDate = Null
+	s = UCase(Trim(raw))
+	If s = "" Then Exit Function
+	months = Split("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC", " ")
+	If InStr(s, "-") > 0 And Len(s) = 10 Then
+		parts = Split(s, "-")
+		ParseLegacyDate = DateSerial(CInt(parts(0)), CInt(parts(1)), CInt(parts(2)))
+	ElseIf InStr(s, "/") > 0 Then
+		parts = Split(s, "/")
+		yy = CInt(parts(2))
+		If yy < 100 Then yy = yy + 2000
+		ParseLegacyDate = DateSerial(yy, CInt(parts(0)), CInt(parts(1)))
+	ElseIf InStr(s, " ") > 0 Then
+		parts = Split(s, " ")
+		For i = 0 To 11
+			If months(i) = Left(parts(1), 3) Then
+				yy = CInt(parts(2))
+				If yy < 100 Then yy = yy + IIf(yy > 50, 1900, 2000)
+				ParseLegacyDate = DateSerial(yy, i + 1, CInt(parts(0)))
+				Exit Function
+			End If
+		Next
+	ElseIf Len(s) = 8 And IsNumeric(s) Then
+		ParseLegacyDate = DateSerial(CInt(Left(s, 4)), CInt(Mid(s, 5, 2)), CInt(Right(s, 2)))
+	End If
+	Exit Function
+Bad:
+	ParseLegacyDate = Null
+	Exit Function
+End Function
+
+'++LotusScript Development Environment:2:1:DaysBetween:1:8
+Function DaysBetween(d1 As Variant, d2 As Variant) As Long
+	If IsNull(d1) Or IsNull(d2) Then
+		DaysBetween = -1
+	Else
+		DaysBetween = CLng(Fix(CDbl(d2) - CDbl(d1)))
+	End If
+End Function
+
+'++LotusScript Development Environment:2:1:PadLeft:1:8
+Function PadLeft(s As String, width As Integer, ch As String) As String
+	If Len(s) >= width Then PadLeft = s Else PadLeft = String$(width - Len(s), ch) & s
+End Function
+
+'++LotusScript Development Environment:2:2:StampAgentRun:1:8
+Sub StampAgentRun(db As NotesDatabase, stampField As String)
+	Dim prof As NotesDocument
+	On Error GoTo Quiet
+	Set prof = db.GetProfileDocument(PROFILE_FORM)
+	Call prof.ReplaceItemValue(stampField, Now)
+	Call prof.Save(True, False)
+	Exit Sub
+Quiet:
+	Exit Sub
+End Sub

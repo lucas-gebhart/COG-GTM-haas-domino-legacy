@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='EngravingQueue' alias='Engraving|vwEngrave' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='true' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='false' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='false'
+ nomenu='false' allowcustomizations='true'>
+<noteinfo noteid='14E' unid='E4F5A6B7C8D9EAFB85258A1F00305D71' sequence='13'>
+<created><datetime>20080115T101500,00-05</datetime></created>
+<modified><datetime>20210823T133005,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT Form = &quot;EngravingJob&quot; &amp; JobStatus != &quot;Complete&quot; &amp; JobStatus != &quot;Cancelled&quot; &amp; !@IsAvailable($Conflict)</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Start Selected' icon='14'><code event='hidewhen'><formula>!@IsMember(&quot;[Engraver]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;(StartEngraving)&quot;)</formula></code></action>
+<action title='Complete Selected' icon='14'><code event='hidewhen'><formula>!@IsMember(&quot;[Engraver]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;(AdvanceStage)&quot;)</formula></code></action>
+<action title='Print Job Tickets' icon='23'><code event='click'><formula>@Command([FilePrint]; &quot;1&quot;; &quot;0&quot;; &quot;JobTicket&quot;)</formula></code></action>
+</actionbar>
+<column itemname='PriorityCat' width='14' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Priority'/>
+<code event='value'><formula>@If(Priority = &quot;Congressional&quot;; &quot;1. Congressional&quot;; Priority = &quot;Expedite&quot;; &quot;2. Expedite&quot;; &quot;3. Routine&quot;)</formula></code>
+</column>
+<column itemname='QueuedDate' width='10' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Queued'/>
+<code event='value'><formula>@Text(QueuedDate; &quot;D0S0&quot;)</formula></code>
+</column>
+<column itemname='JobNumber' width='14' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Job'/>
+<code event='value'><formula>JobNumber</formula></code>
+</column>
+<column itemname='CaseNumber' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Case'/>
+<code event='value'><formula>CaseNumber</formula></code>
+</column>
+<column itemname='VeteranName' width='24' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Veteran'/>
+<code event='value'><formula>VeteranName</formula></code>
+</column>
+<column itemname='JobStatus' width='14' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Status'/>
+<code event='value'><formula>JobStatus + @If(ReworkCount &gt; 0; &quot; (rework x&quot; + @Text(ReworkCount) + &quot;)&quot;; &quot;&quot;)</formula></code>
+</column>
+<column itemname='ItemCount' width='5' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Items'/>
+<code event='value'><formula>@Text(@Elements(Items))</formula></code>
+</column>
+<column itemname='EngravingText' width='30' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Engraving Text'/>
+<code event='value'><formula>EngravingText</formula></code>
+</column>
+<column itemname='Machine' width='8' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Machine'/>
+<code event='value'><formula>Machine</formula></code>
+</column>
+<column itemname='Engraver' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Engraver'/>
+<code event='value'><formula>@Name([CN]; Engraver)</formula></code>
+</column>
+<column itemname='DaysInQueue' width='5' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Days'/>
+<code event='value'><formula>@Text(@Integer((@Today - QueuedDate) / 86400))</formula></code>
+</column>
+<item name='$Comment'><text>Engraving shop work queue: open EngravingJob documents by priority then FIFO. EngravingQueue.xsp renders this view for the web. Jobs referencing deleted cases remain in the queue (orphan wart).</text></item>
+</view>

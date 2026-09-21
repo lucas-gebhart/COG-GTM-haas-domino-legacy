@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='Profile' alias='frmProfile|Config' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ hide='notes web' bgcolor='white' noreplace='false' renderpassthrough='true'>
+<noteinfo noteid='12E' unid='5C9A7D3E1F2B4C6D85258A1F00305C22' sequence='66'>
+<created><datetime>20040318T140000,00-05</datetime></created>
+<modified><datetime>20240905T093350,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name></updatedby>
+<code event='windowtitle'><formula>"Heraldry Automation System - Configuration Profile"</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'><code event='hidewhen'><formula>!@IsMember("[Admin]"; @UserRoles)</formula></code><code event='click'><formula>@Command([EditDocument])</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='14pt' style='bold' name='Verdana' color='navy'/>Configuration Profile (profile document, one per database)</run></par>
+<par def='1'><run><font size='8pt' name='Arial' color='gray'/>Opened via @GetProfileField / NotesDatabase.GetProfileDocument("Profile"). Keyword lists here feed comboboxes and validation; serial counters feed the computed document numbers.</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Status List</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='StatusList' allowmultivalues='true' listinputseparators='newline' listdisplayseparator='newline'>
+<code event='defaultvalue'><formula>"Draft":"Submitted":"Under Review":"Approved":"Released to Vendor":"In Production":"Shipped":"Complete":"Cancelled"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Released Statuses (modification blocked)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ReleasedStatuses' allowmultivalues='true' listinputseparators='newline' listdisplayseparator='newline'>
+<code event='defaultvalue'><formula>"Released to Vendor":"In Production":"Shipped":"Complete":"Cancelled"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Fund Codes</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='FundCodes' allowmultivalues='true' listinputseparators='newline' listdisplayseparator='newline'>
+<code event='defaultvalue'><formula>"2A":"2B":"2C":"6A":"6B":"AB":"GD":"XP"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Project Codes</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ProjectCodes' allowmultivalues='true' listinputseparators='newline' listdisplayseparator='newline'>
+<code event='defaultvalue'><formula>"":"3AH":"3AZ":"9GU":"HER":"SES"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Next Request Serial</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='editable' name='NextRequestSerial'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/><code event='defaultvalue'><formula>1</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Next SES Serial</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='editable' name='NextSESSerial'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/><code event='defaultvalue'><formula>1</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Status Mail From</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='MailFrom'><code event='defaultvalue'><formula>"Heraldry Automation System &lt;usarmy.detroit.tacom.mbx.ilsc-heraldry@example.mil&gt;"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Status Mail CC</run></par></tablecell>
+<tablecell><par def='1'><field type='names' kind='editable' name='MailCC' allowmultivalues='true'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Send Status Mail</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='SendStatusMail'><keywords ui='radiobutton' columns='2'><textlist><text>Yes</text><text>No</text></textlist></keywords><code event='defaultvalue'><formula>"Yes"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Help Desk Text</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='HelpDeskText'><code event='defaultvalue'><formula>"Contact the Heraldry Automation System administrator, TACOM ILSC Clothing &amp; Heraldry PSID, Philadelphia PA. DSN 444-0000 / Comm (215) 555-0100."</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Last Opened</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='computed' name='LastOpened'><code event='value'><formula>@If(@IsAvailable(LastOpened); LastOpened; @Now)</formula></code></field></par></tablecell></tablerow>
+</table>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+<item name='$Comment'><text>Profile form. The single profile document is exported as form="Profile" in export/dxl/heraldry-documents.dxl.</text></item>
+</form>

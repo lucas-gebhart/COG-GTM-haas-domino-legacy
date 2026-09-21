@@ -1,0 +1,244 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+' HAASAwards - awards-case workflow helpers (vetmedals.nsf)
+Option Public
+Option Declare
+Use "HAASCommon"
+
+'++LotusScript Development Environment:2:5:(Forward):0:1
+Declare Function IsValidStageTransition(fromStage As String, toStage As String) As Boolean
+Declare Function NextStage(currentStage As String, engravingRequired As Boolean) As String
+Declare Sub StampStageDate(doc As NotesDocument, newStage As String)
+Declare Function AdvanceCase(db As NotesDatabase, caseDoc As NotesDocument, who As String) As String
+Declare Function CreateEngravingJob(db As NotesDatabase, caseDoc As NotesDocument) As NotesDocument
+Declare Function CreateShipmentRecord(db As NotesDatabase, caseDoc As NotesDocument) As NotesDocument
+Declare Function ComputeAgingFlag(daysOpen As Long, amberDays As Long, redDays As Long) As String
+Declare Function FindRequesterByKey(db As NotesDatabase, lookupKey As String) As NotesDocument
+Declare Function BuildRequesterKey(lastName As String, firstName As String, zip As String) As String
+Declare Function CaseHasEngravableLines(db As NotesDatabase, caseDoc As NotesDocument) As Boolean
+Declare Function IsEngravable(awardName As String) As Boolean
+
+'++LotusScript Development Environment:2:5:(Declarations):0:10
+' Awards whose reverse is engraved with the recipient's name per AR 600-8-22 practice
+Const ENGRAVED_AWARDS = "|MEDAL OF HONOR|DISTINGUISHED SERVICE CROSS|DISTINGUISHED SERVICE MEDAL|SILVER STAR|LEGION OF MERIT|DISTINGUISHED FLYING CROSS|SOLDIER'S MEDAL|BRONZE STAR MEDAL|PURPLE HEART|AIR MEDAL|ARMY COMMENDATION MEDAL|"
+
+'++LotusScript Development Environment:2:1:IsValidStageTransition:1:8
+Function IsValidStageTransition(fromStage As String, toStage As String) As Boolean
+	' Forward-only along the main path; Engraving may be skipped; On Hold can go back to
+	' the stage it came from; Cancelled from anywhere before Shipped.
+	Dim f As String, t As String
+	f = Trim(fromStage): t = Trim(toStage)
+	IsValidStageTransition = False
+	If f = t Then Exit Function
+	If t = STAGE_CANCELLED Then
+		IsValidStageTransition = (f <> STAGE_SHIPPED And f <> STAGE_CLOSED)
+		Exit Function
+	End If
+	If t = STAGE_HOLD Then
+		IsValidStageTransition = (f <> STAGE_SHIPPED And f <> STAGE_CLOSED And f <> STAGE_CANCELLED)
+		Exit Function
+	End If
+	Select Case f
+	Case STAGE_AUTHORIZED: IsValidStageTransition = (t = STAGE_ENGRAVING Or t = STAGE_ASSEMBLY)
+	Case STAGE_ENGRAVING: IsValidStageTransition = (t = STAGE_ASSEMBLY)
+	Case STAGE_ASSEMBLY: IsValidStageTransition = (t = STAGE_WAREHOUSE Or t = STAGE_ENGRAVING)   ' QC fail -> re-engrave
+	Case STAGE_WAREHOUSE: IsValidStageTransition = (t = STAGE_SHIPPED)
+	Case STAGE_SHIPPED: IsValidStageTransition = (t = STAGE_CLOSED)
+	Case STAGE_HOLD: IsValidStageTransition = (t <> STAGE_CLOSED)
+	Case STAGE_CLOSED, STAGE_CANCELLED: IsValidStageTransition = False
+	Case Else: IsValidStageTransition = True   ' legacy free-text stage: let the user fix it
+	End Select
+End Function
+
+'++LotusScript Development Environment:2:1:NextStage:1:8
+Function NextStage(currentStage As String, engravingRequired As Boolean) As String
+	Select Case Trim(currentStage)
+	Case STAGE_AUTHORIZED
+		If engravingRequired Then NextStage = STAGE_ENGRAVING Else NextStage = STAGE_ASSEMBLY
+	Case STAGE_ENGRAVING: NextStage = STAGE_ASSEMBLY
+	Case STAGE_ASSEMBLY: NextStage = STAGE_WAREHOUSE
+	Case STAGE_WAREHOUSE: NextStage = STAGE_SHIPPED
+	Case STAGE_SHIPPED: NextStage = STAGE_CLOSED
+	Case Else: NextStage = ""
+	End Select
+End Function
+
+'++LotusScript Development Environment:2:2:StampStageDate:1:8
+Sub StampStageDate(doc As NotesDocument, newStage As String)
+	Dim dt As New NotesDateTime(Now)
+	Select Case newStage
+	Case STAGE_ENGRAVING: Call doc.ReplaceItemValue("EngravingDate", dt)
+	Case STAGE_ASSEMBLY: Call doc.ReplaceItemValue("AssemblyDate", dt)
+	Case STAGE_WAREHOUSE: Call doc.ReplaceItemValue("WarehouseDate", dt)
+	Case STAGE_SHIPPED: Call doc.ReplaceItemValue("ShippedDate", dt)
+	Case STAGE_CLOSED: Call doc.ReplaceItemValue("ClosedDate", dt)
+	End Select
+	Call doc.ReplaceItemValue("StageDate", dt)
+End Sub
+
+'++LotusScript Development Environment:2:1:AdvanceCase:1:8
+Function AdvanceCase(db As NotesDatabase, caseDoc As NotesDocument, who As String) As String
+	' Moves a case one stage forward, creating the side documents each stage needs.
+	' Returns the new stage, or "" with an error message in the last-error variable of the caller.
+	Dim cur As String, nxt As String
+	Dim job As NotesDocument
+	Dim shp As NotesDocument
+	On Error GoTo ErrHandler
+	cur = SafeGetText(caseDoc, "Stage")
+	nxt = NextStage(cur, CaseHasEngravableLines(db, caseDoc))
+	AdvanceCase = ""
+	If nxt = "" Then
+		Call LogAgent("AdvanceStage", "Case " & SafeGetText(caseDoc, "CaseNumber") & " cannot advance from '" & cur & "'")
+		Exit Function
+	End If
+	If Not IsValidStageTransition(cur, nxt) Then Exit Function
+	Select Case nxt
+	Case STAGE_ENGRAVING
+		Set job = CreateEngravingJob(db, caseDoc)
+		Call caseDoc.ReplaceItemValue("EngravingJobNumber", SafeGetText(job, "JobNumber"))
+	Case STAGE_WAREHOUSE
+		If SafeGetText(caseDoc, "QCResult") = "" Then Call caseDoc.ReplaceItemValue("QCResult", "Pass")
+	Case STAGE_SHIPPED
+		If SafeGetText(caseDoc, "TrackingNumber") = "" Then
+			Set shp = CreateShipmentRecord(db, caseDoc)
+			Call caseDoc.ReplaceItemValue("TrackingNumber", SafeGetText(shp, "TrackingNumber"))
+		End If
+	End Select
+	Call StampStageDate(caseDoc, nxt)
+	Call AppendStatusHistory(caseDoc, cur, nxt, who)
+	Call caseDoc.ReplaceItemValue("Stage", nxt)
+	Call caseDoc.ReplaceItemValue("LastModifiedBy", who)
+	Call caseDoc.ReplaceItemValue("LastModifiedDate", Now)
+	If nxt = STAGE_CLOSED Then Call caseDoc.ReplaceItemValue("AgingFlag", "")
+	Call caseDoc.Save(True, False)
+	AdvanceCase = nxt
+	Exit Function
+ErrHandler:
+	Call LogAgent("AdvanceStage", "Error " & Err & ": " & Error$ & " at line " & Erl)
+	AdvanceCase = ""
+	Exit Function
+End Function
+
+'++LotusScript Development Environment:2:1:CreateEngravingJob:1:8
+Function CreateEngravingJob(db As NotesDatabase, caseDoc As NotesDocument) As NotesDocument
+	Dim job As NotesDocument
+	Dim linesView As NotesView
+	Dim lineColl As NotesViewEntryCollection
+	Dim entry As NotesViewEntry
+	Dim line As NotesDocument
+	Dim items() As String
+	Dim n As Integer
+	Dim serial As Long
+	Set job = db.CreateDocument
+	Call job.ReplaceItemValue("Form", "EngravingJob")
+	serial = NextSerial(db, "NextEngravingSerial")
+	Call job.ReplaceItemValue("JobNumber", "ENG-" & Year(Now) & "-" & PadLeft(CStr(serial), 5, "0"))
+	Call job.ReplaceItemValue("CaseNumber", SafeGetText(caseDoc, "CaseNumber"))
+	Call job.ReplaceItemValue("VeteranName", SafeGetText(caseDoc, "VeteranLastName") & ", " & SafeGetText(caseDoc, "VeteranFirstName"))
+	Call job.ReplaceItemValue("Priority", SafeGetText(caseDoc, "Priority"))
+	Call job.ReplaceItemValue("JobStatus", "Queued")
+	Call job.ReplaceItemValue("QueuedDate", Now)
+	Call job.ReplaceItemValue("Font", "Block")
+	Call job.ReplaceItemValue("ReworkCount", 0)
+	Set linesView = db.GetView("(CaseLines)")
+	Set lineColl = linesView.GetAllEntriesByKey(SafeGetText(caseDoc, "CaseNumber"), True)
+	n = 0
+	Set entry = lineColl.GetFirstEntry
+	Do Until entry Is Nothing
+		Set line = entry.Document
+		If SafeGetText(line, "Engrave") = "Yes" Then
+			ReDim Preserve items(n)
+			items(n) = SafeGetText(line, "AwardName") & " :: " & SafeGetText(line, "EngravingText")
+			n = n + 1
+			Call job.ReplaceItemValue("EngravingText", SafeGetText(line, "EngravingText"))
+		End If
+		Set entry = lineColl.GetNextEntry(entry)
+	Loop
+	If n > 0 Then Call job.ReplaceItemValue("Items", items)
+	Call job.ReplaceItemValue("DocReaders", caseDoc.GetItemValue("DocReaders"))
+	Call job.Save(True, False)
+	Set CreateEngravingJob = job
+End Function
+
+'++LotusScript Development Environment:2:1:CreateShipmentRecord:1:8
+Function CreateShipmentRecord(db As NotesDatabase, caseDoc As NotesDocument) As NotesDocument
+	Dim shp As NotesDocument
+	Dim serial As Long
+	Set shp = db.CreateDocument
+	Call shp.ReplaceItemValue("Form", "ShipmentRecord")
+	serial = NextSerial(db, "NextShipmentSerial")
+	Call shp.ReplaceItemValue("ShipmentNumber", "SHP-" & Year(Now) & "-" & PadLeft(CStr(serial), 6, "0"))
+	Call shp.ReplaceItemValue("CaseNumber", SafeGetText(caseDoc, "CaseNumber"))
+	Call shp.ReplaceItemValue("ShipToName", SafeGetText(caseDoc, "ShipToName"))
+	Call shp.ReplaceItemValue("ShipToStreet", SafeGetText(caseDoc, "ShipToStreet"))
+	Call shp.ReplaceItemValue("ShipToCity", SafeGetText(caseDoc, "ShipToCity"))
+	Call shp.ReplaceItemValue("ShipToState", SafeGetText(caseDoc, "ShipToState"))
+	Call shp.ReplaceItemValue("ShipToZIP", SafeGetText(caseDoc, "ShipToZIP"))
+	Call shp.ReplaceItemValue("Carrier", "USPS Priority")
+	' Synthetic USPS-style 22-digit tracking number; real numbers are keyed by the warehouse.
+	Call shp.ReplaceItemValue("TrackingNumber", "9405" & PadLeft(CStr(serial), 10, "0") & PadLeft(CStr(Fix(Rnd * 99999999)), 8, "0"))
+	Call shp.ReplaceItemValue("ShipStatus", "Shipped")
+	Call shp.ReplaceItemValue("PickedDate", Now)
+	Call shp.ReplaceItemValue("ShippedDate", Now)
+	Call shp.ReplaceItemValue("Partial", "No")
+	Call shp.ReplaceItemValue("PieceCount", caseDoc.GetItemValue("LineCount")(0))
+	Call shp.ReplaceItemValue("DocReaders", caseDoc.GetItemValue("DocReaders"))
+	Call shp.Save(True, False)
+	Set CreateShipmentRecord = shp
+End Function
+
+'++LotusScript Development Environment:2:1:ComputeAgingFlag:1:8
+Function ComputeAgingFlag(daysOpen As Long, amberDays As Long, redDays As Long) As String
+	If daysOpen > redDays Then
+		ComputeAgingFlag = "Red"
+	ElseIf daysOpen > amberDays Then
+		ComputeAgingFlag = "Amber"
+	Else
+		ComputeAgingFlag = ""
+	End If
+End Function
+
+'++LotusScript Development Environment:2:1:BuildRequesterKey:1:8
+Function BuildRequesterKey(lastName As String, firstName As String, zip As String) As String
+	' Mirrors the Requester.LookupKey computed field. Note: does NOT strip suffixes,
+	' punctuation or whitespace differences - the root cause of the duplicate requesters.
+	BuildRequesterKey = UCase(Trim(lastName)) & "|" & UCase(Trim(firstName)) & "|" & Left(Trim(zip), 5)
+End Function
+
+'++LotusScript Development Environment:2:1:FindRequesterByKey:1:8
+Function FindRequesterByKey(db As NotesDatabase, lookupKey As String) As NotesDocument
+	Dim v As NotesView
+	Dim doc As NotesDocument
+	Set FindRequesterByKey = Nothing
+	Set v = db.GetView("CSRLookup")
+	If v Is Nothing Then Exit Function
+	Set doc = v.GetDocumentByKey(lookupKey, True)
+	If doc Is Nothing Then Exit Function
+	If SafeGetText(doc, "Form") = "Requester" Then Set FindRequesterByKey = doc
+End Function
+
+'++LotusScript Development Environment:2:1:IsEngravable:1:8
+Function IsEngravable(awardName As String) As Boolean
+	IsEngravable = (InStr(ENGRAVED_AWARDS, "|" & UCase(Trim(awardName)) & "|") > 0)
+End Function
+
+'++LotusScript Development Environment:2:1:CaseHasEngravableLines:1:8
+Function CaseHasEngravableLines(db As NotesDatabase, caseDoc As NotesDocument) As Boolean
+	Dim v As NotesView
+	Dim coll As NotesViewEntryCollection
+	Dim entry As NotesViewEntry
+	CaseHasEngravableLines = False
+	If SafeGetText(caseDoc, "EngravingRequired") = "Yes" Then
+		CaseHasEngravableLines = True
+		Exit Function
+	End If
+	Set v = db.GetView("(CaseLines)")
+	Set coll = v.GetAllEntriesByKey(SafeGetText(caseDoc, "CaseNumber"), True)
+	Set entry = coll.GetFirstEntry
+	Do Until entry Is Nothing
+		If SafeGetText(entry.Document, "Engrave") = "Yes" Then
+			CaseHasEngravableLines = True
+			Exit Function
+		End If
+		Set entry = coll.GetNextEntry(entry)
+	Loop
+End Function

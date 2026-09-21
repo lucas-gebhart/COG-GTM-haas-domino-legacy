@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom"
+	pageTitle="CSR Lookup">
+	<!-- Customer-service lookup: case number, veteran last name, or requester "Last, First". Uses the CSRLookup view. -->
+	<xp:this.resources>
+		<xp:script src="/HAASCase.jss" clientSide="false" />
+	</xp:this.resources>
+	<xp:this.beforePageLoad><![CDATA[#{javascript:
+viewScope.q = HAASCase.sanitizeLookup(param.q);
+if (viewScope.q != "") { viewScope.results = HAASCase.lookup(viewScope.q); }
+if (sessionScope.haasError != null) { viewScope.msg = sessionScope.haasError; sessionScope.haasError = null; }}]]></xp:this.beforePageLoad>
+
+	<xc:ccLayout pageName="CSR Lookup" navSelection="lookup" showNav="true">
+		<xp:this.facets>
+			<xp:panel xp:key="content">
+				<xc:ccStatusBanner message="#{javascript:viewScope.msg}" />
+				<xp:label value="Customer Service Lookup" styleClass="haasH1" />
+				<xp:text escape="true" styleClass="haasHelp" value="Enter a case number (VMA-YYYY-NNNNNN), the veteran's last name, or the requester as LAST, FIRST. Letters, digits, space, comma, period, apostrophe and hyphen only; 60 characters maximum." />
+
+				<xp:panel styleClass="haasLookupBox">
+					<xp:label value="Find:" for="q" />
+					<xp:inputText id="q" value="#{viewScope.q}" maxlength="60" size="40" styleClass="haasInput" style="text-transform:uppercase" />
+					<xp:button value="Search" id="btnSearch" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="partial" refreshId="pnlResults">
+							<xp:this.action><![CDATA[#{javascript:
+viewScope.q = HAASCase.sanitizeLookup(viewScope.q);
+if (viewScope.q == "") { viewScope.msg = "Enter a case number or name using letters, digits, space, comma, period, apostrophe or hyphen."; viewScope.results = []; }
+else { viewScope.msg = ""; viewScope.results = HAASCase.lookup(viewScope.q); }}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+					<xp:button value="Clear" id="btnClear" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:viewScope.q = ""; viewScope.results = null; viewScope.msg = "";}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+				</xp:panel>
+
+				<xp:panel id="pnlResults">
+					<xp:text escape="true" styleClass="haasHelp" rendered="#{javascript:viewScope.results != null &amp;&amp; viewScope.results.length == 0}" value="No matching cases or requesters." />
+					<xp:text escape="true" styleClass="haasWarn" rendered="#{javascript:viewScope.results != null &amp;&amp; viewScope.results.length >= HAASCase.MAX_LOOKUP}" value="#{javascript:'Only the first ' + HAASCase.MAX_LOOKUP + ' matches are shown. Refine the search.'}" />
+					<xp:table styleClass="haasView" border="1" cellpadding="3" cellspacing="0" width="100%" rendered="#{javascript:viewScope.results != null &amp;&amp; viewScope.results.length > 0}">
+						<xp:tr styleClass="haasViewHeader">
+							<xp:td>Type</xp:td><xp:td>Key</xp:td><xp:td>Name / Case</xp:td><xp:td>Stage / Address</xp:td>
+						</xp:tr>
+						<xp:repeat var="r" value="#{javascript:viewScope.results}" indexVar="i">
+							<xp:tr styleClass="#{javascript:(i % 2 == 0) ? 'haasRowOdd' : 'haasRowEven'}">
+								<xp:td><xp:text escape="true" value="#{javascript:r.form}" /></xp:td>
+								<xp:td styleClass="haasMono"><xp:text escape="true" value="#{javascript:r.key}" /></xp:td>
+								<xp:td>
+									<xp:link text="#{javascript:r.display}" value="#{javascript:(r.form == 'AwardsCase') ? ('/CaseView.xsp?documentId=' + r.unid) : ('/0/' + r.unid + '?OpenDocument')}" />
+								</xp:td>
+								<xp:td><xp:text escape="true" value="#{javascript:r.extra}" /></xp:td>
+							</xp:tr>
+						</xp:repeat>
+					</xp:table>
+					<!-- Duplicate requester documents (same LookupKey) show as separate rows here; CSRs pick whichever
+					     is "most recent" by eye. This is the known duplicate-requester wart in action. -->
+				</xp:panel>
+
+				<xp:panel styleClass="haasActionBar">
+					<xp:button value="New Case (manual entry)" id="btnNewCase" styleClass="haasButton" rendered="#{javascript:HAASCase.hasRole('[CSR]') || HAASCase.hasRole('[TACOM]')}">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:context.redirectToPage("/AwardsCase?OpenForm");}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+					<xp:button value="Aging Cases" id="btnAging" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:context.redirectToPage("/AgingCases?OpenView");}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+				</xp:panel>
+			</xp:panel>
+		</xp:this.facets>
+	</xc:ccLayout>
+</xp:view>

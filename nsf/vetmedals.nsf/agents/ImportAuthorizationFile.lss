@@ -1,0 +1,531 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+' Agent: ImportAuthorizationFile
+' Trigger: manual (Actions menu / "Import Now" on the AuthorizationFile form) and scheduled 04:15 daily
+'          against the HRC transfer share (Profile.ImportPath).
+'
+' Parses an HRC or NPRC electronic awards-authorization file and creates AwardsCase + AwardLine
+' documents, de-duplicating Requester documents on LookupKey (last|first|zip5).
+'
+' ---------------------------------------------------------------------------------------------
+' HRC fixed-width layout (record type in cols 1-2). All fields left-justified, space padded.
+'   01 header : cols 3-10 file date YYYYMMDD | 11-18 batch id | 19-26 auth date YYYYMMDD | 27-32 record count
+'   10 case   : cols 3-12 HRC case id | 13-42 last name(30) | 43-62 first name(20) | 63 MI | 64-71 svc number/SSN-4 (right-just) |
+'               72-79 svc from YYYYMMDD | 80-87 svc to YYYYMMDD | 88-89 relationship code | 90-119 requester last(30) |
+'               120-139 requester first(20) | 140-169 street(30) | 170-189 city(20) | 190-191 state | 192-201 zip(10) |
+'               202 deceased Y/N | 203 priority R/E/C | 204-215 rank(12)
+'   20 award  : cols 3-12 HRC case id | 13-18 award code(6) | 19-20 qty | 21-22 device count | 23 engrave Y/N |
+'               24-63 engraving text(40) | 64-93 authority(30)
+'   99 trailer: cols 3-8 case count | 9-14 award count | 15-22 checksum (sum of case-id digits mod 99999999)
+'
+' NPRC pipe-delimited layout:
+'   line 1 : NPRC-AWD|v2|<file date YYYY-MM-DD>|<batch>|<auth date YYYY-MM-DD>
+'   C|<nprc ref>|<last>|<first>|<mi>|<ssn4>|<svc from>|<svc to>|<rel>|<req last>|<req first>|<street>|<city>|<st>|<zip>|<deceased>|<priority>|<rank>
+'   A|<nprc ref>|<award code>|<qty>|<devices>|<engrave Y/N>|<engraving text>|<authority>
+'   T|<case count>|<award count>
+' Relationship codes: SE self, SP spouse, SO son, DA daughter, PA parent, SI sibling, GC grandchild, OT other
+' ---------------------------------------------------------------------------------------------
+Option Public
+Option Declare
+Use "HAASCommon"
+Use "HAASAwards"
+
+'++LotusScript Development Environment:2:5:(Declarations):0:10
+Const AGENT_NAME = "ImportAuthorizationFile"
+Const MAX_LINE_LEN = 400
+Const MAX_RECORDS = 5000
+
+Dim gDb As NotesDatabase
+Dim gSession As NotesSession
+Dim gAuthDoc As NotesDocument
+Dim gLog() As String
+Dim gLogCount As Integer
+Dim gCases As Long, gLines As Long, gReqNew As Long, gReqMatched As Long, gRejected As Long
+Dim gAuthDate As Variant
+Dim gCaseByRef List As NotesDocument   ' HRC/NPRC case id -> AwardsCase (for award records)
+Dim gAwardTable List As String        ' award code -> "Name|Category|Engrave"
+
+'++LotusScript Development Environment:2:2:Initialize:1:10
+Sub Initialize
+	Dim agent As NotesAgent
+	Dim coll As NotesDocumentCollection
+	Dim doc As NotesDocument
+	Dim rtItem As NotesRichTextItem
+	Dim att As NotesEmbeddedObject
+	Dim tmpPath As String
+	Dim status As String
+	On Error GoTo ErrHandler
+
+	Set gSession = New NotesSession
+	Set gDb = gSession.CurrentDatabase
+	Set agent = gSession.CurrentAgent
+	Call LoadAwardTable
+
+	' Manual run: selected AuthorizationFile documents. Scheduled run: every doc with ImportStatus = Received.
+	Set coll = gDb.UnprocessedDocuments
+	If coll.Count = 0 Then
+		Set coll = gDb.Search({Form = "AuthorizationFile" & ImportStatus = "Received"}, Nothing, 0)
+	End If
+	If coll.Count = 0 Then
+		Call LogAgent(AGENT_NAME, "Nothing to import.")
+		Exit Sub
+	End If
+
+	Set doc = coll.GetFirstDocument
+	Do Until doc Is Nothing
+		Set gAuthDoc = doc
+		gCases = 0: gLines = 0: gReqNew = 0: gReqMatched = 0: gRejected = 0: gLogCount = 0
+		ReDim gLog(0)
+		Erase gCaseByRef
+		If SafeGetText(doc, "ImportStatus") = "Imported" Then
+			Call AddLog("Skipped - already imported on " & SafeGetText(doc, "ImportedDate"))
+		Else
+			Set rtItem = doc.GetFirstItem("FileBody")
+			If rtItem Is Nothing Then
+				Call AddLog("REJECTED: no file attached")
+				status = "Rejected"
+			ElseIf IsEmpty(rtItem.EmbeddedObjects) Then
+				Call AddLog("REJECTED: no file attached")
+				status = "Rejected"
+			Else
+				Set att = rtItem.EmbeddedObjects(0)
+				tmpPath = Environ("TEMP") & "\" & att.Name
+				Call att.ExtractFile(tmpPath)
+				Call AddLog("Extracted " & att.Name & " (" & att.FileSize & " bytes)")
+				If SafeGetText(doc, "SourceAgency") = "NPRC" Then
+					status = ParseNPRC(tmpPath)
+				Else
+					status = ParseHRC(tmpPath)
+				End If
+				Kill tmpPath
+			End If
+			Call doc.ReplaceItemValue("ImportStatus", status)
+			Call doc.ReplaceItemValue("ImportedDate", Now)
+			Call doc.ReplaceItemValue("ImportedBy", gSession.UserName)
+			Call doc.ReplaceItemValue("CasesCreated", gCases)
+			Call doc.ReplaceItemValue("LinesCreated", gLines)
+			Call doc.ReplaceItemValue("RequestersCreated", gReqNew)
+			Call doc.ReplaceItemValue("RequestersMatched", gReqMatched)
+			Call doc.ReplaceItemValue("RecordsRejected", gRejected)
+			If Not IsNull(gAuthDate) Then Call doc.ReplaceItemValue("AuthorizationDate", gAuthDate)
+		End If
+		Call doc.ReplaceItemValue("ImportLog", gLog)
+		Call doc.Save(True, False)
+		Call LogAgent(AGENT_NAME, SafeGetText(doc, "FileName") & ": " & status & " - " & gCases & " cases, " & gLines & " lines, " & gReqNew & " new requesters, " & gReqMatched & " matched, " & gRejected & " rejected")
+		Set doc = coll.GetNextDocument(doc)
+	Loop
+	Call StampAgentRun(gDb, "ImportLastRun")
+	Exit Sub
+ErrHandler:
+	Call LogAgent(AGENT_NAME, "FATAL Error " & Err & ": " & Error$ & " at line " & Erl)
+	If Not gAuthDoc Is Nothing Then
+		Call AddLog("FATAL Error " & Err & ": " & Error$)
+		Call gAuthDoc.ReplaceItemValue("ImportStatus", "Imported with Errors")
+		Call gAuthDoc.ReplaceItemValue("ImportLog", gLog)
+		Call gAuthDoc.Save(True, False)
+	End If
+	Exit Sub
+End Sub
+
+'++LotusScript Development Environment:2:2:AddLog:1:8
+Sub AddLog(msg As String)
+	ReDim Preserve gLog(gLogCount)
+	gLog(gLogCount) = Format$(Now, "hh:nn:ss") & " " & msg
+	gLogCount = gLogCount + 1
+End Sub
+
+'++LotusScript Development Environment:2:2:LoadAwardTable:1:8
+Sub LoadAwardTable
+	' Profile.Awards: "Award Name|CODE|Category|Engrave"
+	Dim v As Variant
+	Dim i As Integer
+	Dim parts As Variant
+	v = GetProfileValue(gDb, "Awards")
+	If IsNull(v) Then Exit Sub
+	For i = LBound(v) To UBound(v)
+		parts = Split(CStr(v(i)), "|")
+		If UBound(parts) >= 3 Then gAwardTable(UCase(Trim(parts(1)))) = parts(0) & "|" & parts(2) & "|" & parts(3)
+	Next
+End Sub
+
+'++LotusScript Development Environment:2:1:ParseHRC:1:8
+Function ParseHRC(path As String) As String
+	Dim fh As Integer
+	Dim line As String
+	Dim recType As String
+	Dim lineNo As Long
+	Dim declaredCount As Long
+	Dim headerSeen As Boolean
+	Dim trailerSeen As Boolean
+	Dim caseDoc As NotesDocument
+	Dim ref As String
+	Dim yyyymmdd As String
+	On Error GoTo ErrHandler
+	fh = FreeFile
+	Open path For Input As fh
+	lineNo = 0
+	Do While Not EOF(fh)
+		Line Input #fh, line
+		lineNo = lineNo + 1
+		If lineNo > MAX_RECORDS Then
+			Call AddLog("REJECTED remaining records: file exceeds " & MAX_RECORDS & " lines")
+			Exit Do
+		End If
+		If Len(line) > MAX_LINE_LEN Then line = Left(line, MAX_LINE_LEN)
+		recType = Left(line, 2)
+		Select Case recType
+		Case "01"
+			headerSeen = True
+			yyyymmdd = Mid(line, 19, 8)
+			gAuthDate = ParseLegacyDate(yyyymmdd)
+			If IsNull(gAuthDate) Then Call AddLog("WARNING header authorization date unparseable: '" & yyyymmdd & "'")
+			declaredCount = Val(Mid(line, 27, 6))
+			Call AddLog("HRC header: batch " & Trim(Mid(line, 11, 8)) & ", auth date " & yyyymmdd & ", " & declaredCount & " records declared")
+		Case "10"
+			If Not headerSeen Then
+				Call AddLog("REJECTED line " & lineNo & ": case record before header")
+				gRejected = gRejected + 1
+			Else
+				ref = Trim(Mid(line, 3, 10))
+				Set caseDoc = CreateCaseFromFields(ref, Trim(Mid(line, 13, 30)), Trim(Mid(line, 43, 20)), Trim(Mid(line, 63, 1)), _
+					Trim(Mid(line, 64, 8)), Mid(line, 72, 8), Mid(line, 80, 8), Trim(Mid(line, 88, 2)), Trim(Mid(line, 90, 30)), Trim(Mid(line, 120, 20)), _
+					Trim(Mid(line, 140, 30)), Trim(Mid(line, 170, 20)), Trim(Mid(line, 190, 2)), Trim(Mid(line, 192, 10)), _
+					Mid(line, 202, 1), Mid(line, 203, 1), Trim(Mid(line, 204, 12)), "HRC", lineNo)
+			End If
+		Case "20"
+			ref = Trim(Mid(line, 3, 10))
+			Call CreateLineFromFields(ref, Trim(Mid(line, 13, 6)), Val(Mid(line, 19, 2)), Val(Mid(line, 21, 2)), Mid(line, 23, 1), Trim(Mid(line, 24, 40)), Trim(Mid(line, 64, 30)), lineNo)
+		Case "99"
+			trailerSeen = True
+			Call AddLog("HRC trailer: " & Val(Mid(line, 3, 6)) & " cases / " & Val(Mid(line, 9, 6)) & " awards declared; created " & gCases & " / " & gLines)
+			Call gAuthDoc.ReplaceItemValue("TrailerChecksum", Trim(Mid(line, 15, 8)))
+			If Val(Mid(line, 3, 6)) = gCases Then
+				Call gAuthDoc.ReplaceItemValue("ChecksumMatch", "Yes")
+			Else
+				Call gAuthDoc.ReplaceItemValue("ChecksumMatch", "No")
+				Call AddLog("WARNING trailer case count does not match cases created")
+			End If
+		Case ""
+			' blank line - ignore
+		Case Else
+			Call AddLog("REJECTED line " & lineNo & ": unknown record type '" & recType & "'")
+			gRejected = gRejected + 1
+		End Select
+	Loop
+	Close fh
+	Call gAuthDoc.ReplaceItemValue("RecordCount", lineNo)
+	If Not headerSeen Then
+		ParseHRC = "Rejected"
+		Call AddLog("REJECTED: no 01 header record")
+	ElseIf Not trailerSeen Then
+		ParseHRC = "Imported with Errors"
+		Call AddLog("WARNING: no 99 trailer record - file may be truncated")
+	ElseIf gRejected > 0 Then
+		ParseHRC = "Imported with Errors"
+	Else
+		ParseHRC = "Imported"
+	End If
+	Exit Function
+ErrHandler:
+	Call AddLog("Error " & Err & " parsing line " & lineNo & ": " & Error$)
+	Close fh
+	ParseHRC = "Imported with Errors"
+	Exit Function
+End Function
+
+'++LotusScript Development Environment:2:1:ParseNPRC:1:8
+Function ParseNPRC(path As String) As String
+	Dim fh As Integer
+	Dim line As String
+	Dim f As Variant
+	Dim lineNo As Long
+	Dim headerSeen As Boolean, trailerSeen As Boolean
+	Dim caseDoc As NotesDocument
+	On Error GoTo ErrHandler
+	fh = FreeFile
+	Open path For Input As fh
+	Do While Not EOF(fh)
+		Line Input #fh, line
+		lineNo = lineNo + 1
+		If lineNo > MAX_RECORDS Then Exit Do
+		If Len(line) > MAX_LINE_LEN Then line = Left(line, MAX_LINE_LEN)
+		f = Split(line, "|")
+		If UBound(f) < 0 Then GoTo NextLine
+		Select Case f(0)
+		Case "NPRC-AWD"
+			headerSeen = True
+			If UBound(f) >= 4 Then
+				gAuthDate = ParseLegacyDate(f(4))
+				Call AddLog("NPRC header: version " & f(1) & ", batch " & f(3) & ", auth date " & f(4))
+			Else
+				Call AddLog("WARNING short NPRC header")
+			End If
+		Case "C"
+			If UBound(f) < 17 Then
+				Call AddLog("REJECTED line " & lineNo & ": case record has " & (UBound(f) + 1) & " fields, expected 18")
+				gRejected = gRejected + 1
+			Else
+				Set caseDoc = CreateCaseFromFields(f(1), f(2), f(3), f(4), f(5), f(6), f(7), f(8), f(9), f(10), f(11), f(12), f(13), f(14), f(15), f(16), f(17), "NPRC", lineNo)
+			End If
+		Case "A"
+			If UBound(f) < 7 Then
+				Call AddLog("REJECTED line " & lineNo & ": award record has " & (UBound(f) + 1) & " fields, expected 8")
+				gRejected = gRejected + 1
+			Else
+				Call CreateLineFromFields(f(1), f(2), Val(f(3)), Val(f(4)), f(5), f(6), f(7), lineNo)
+			End If
+		Case "T"
+			trailerSeen = True
+			If UBound(f) >= 2 Then
+				Call AddLog("NPRC trailer: " & f(1) & " cases / " & f(2) & " awards declared; created " & gCases & " / " & gLines)
+				Call gAuthDoc.ReplaceItemValue("ChecksumMatch", IIf(Val(f(1)) = gCases, "Yes", "No"))
+			End If
+		Case Else
+			Call AddLog("REJECTED line " & lineNo & ": unknown record type '" & f(0) & "'")
+			gRejected = gRejected + 1
+		End Select
+NextLine:
+	Loop
+	Close fh
+	Call gAuthDoc.ReplaceItemValue("RecordCount", lineNo)
+	If Not headerSeen Then
+		ParseNPRC = "Rejected"
+	ElseIf Not trailerSeen Or gRejected > 0 Then
+		ParseNPRC = "Imported with Errors"
+	Else
+		ParseNPRC = "Imported"
+	End If
+	Exit Function
+ErrHandler:
+	Call AddLog("Error " & Err & " parsing line " & lineNo & ": " & Error$)
+	Close fh
+	ParseNPRC = "Imported with Errors"
+	Exit Function
+End Function
+
+'++LotusScript Development Environment:2:1:CreateCaseFromFields:1:8
+Function CreateCaseFromFields(ref As String, lastName As String, firstName As String, mi As String, svcNum As String, _
+	svcFrom As String, svcTo As String, relCode As String, reqLast As String, reqFirst As String, street As String, _
+	city As String, st As String, zip As String, deceased As String, priority As String, rank As String, source As String, lineNo As Long) As NotesDocument
+	Dim caseDoc As NotesDocument
+	Dim reqDoc As NotesDocument
+	Dim key As String
+	Dim serial As Long
+	Dim rel As String
+	Dim dFrom As Variant, dTo As Variant
+	On Error GoTo ErrHandler
+	Set CreateCaseFromFields = Nothing
+
+	' --- validation (whitelist) ---
+	If Trim(lastName) = "" Or Trim(firstName) = "" Then
+		Call AddLog("REJECTED line " & lineNo & " (" & ref & "): veteran name missing")
+		gRejected = gRejected + 1
+		Exit Function
+	End If
+	If Len(lastName) > 60 Or Len(firstName) > 40 Then
+		Call AddLog("REJECTED line " & lineNo & " (" & ref & "): name exceeds field length")
+		gRejected = gRejected + 1
+		Exit Function
+	End If
+	If Trim(zip) <> "" Then
+		If Not (Left(zip, 5) Like "#####") Then
+			Call AddLog("WARNING line " & lineNo & " (" & ref & "): ZIP '" & zip & "' not 5 digits - address flagged unverified")
+		End If
+	End If
+	If IsElement(gCaseByRef(ref)) Then
+		Call AddLog("REJECTED line " & lineNo & ": duplicate case reference " & ref & " in file")
+		gRejected = gRejected + 1
+		Exit Function
+	End If
+
+	' --- requester (veteran or NOK) dedupe on LookupKey ---
+	If Trim(reqLast) = "" Then reqLast = lastName
+	If Trim(reqFirst) = "" Then reqFirst = firstName
+	key = BuildRequesterKey(reqLast, reqFirst, zip)
+	Set reqDoc = FindRequesterByKey(gDb, key)
+	rel = RelationshipFromCode(relCode)
+	If reqDoc Is Nothing Then
+		Set reqDoc = gDb.CreateDocument
+		Call reqDoc.ReplaceItemValue("Form", "Requester")
+		serial = NextSerial(gDb, "NextRequesterSerial")
+		Call reqDoc.ReplaceItemValue("RequesterID", "RQ" & Right(CStr(Year(Now)), 2) & PadLeft(CStr(serial), 6, "0"))
+		Call reqDoc.ReplaceItemValue("LastName", reqLast)
+		Call reqDoc.ReplaceItemValue("FirstName", reqFirst)
+		Call reqDoc.ReplaceItemValue("Relationship", rel)
+		If rel <> "Self" Then Call reqDoc.ReplaceItemValue("VeteranName", lastName & ", " & firstName)
+		Call reqDoc.ReplaceItemValue("Street", street)
+		Call reqDoc.ReplaceItemValue("City", city)
+		Call reqDoc.ReplaceItemValue("State", UCase(st))
+		Call reqDoc.ReplaceItemValue("ZIP", zip)
+		Call reqDoc.ReplaceItemValue("Source", source)
+		Call reqDoc.ReplaceItemValue("CreatedDate", Now)
+		Call reqDoc.ReplaceItemValue("AddressVerified", "No")
+		Call reqDoc.ReplaceItemValue("LookupKey", key)
+		Call reqDoc.ReplaceItemValue("DisplayName", reqLast & ", " & reqFirst)
+		Call reqDoc.ComputeWithForm(False, False)
+		Call reqDoc.Save(True, False)
+		gReqNew = gReqNew + 1
+	Else
+		gReqMatched = gReqMatched + 1
+	End If
+
+	' --- case ---
+	Set caseDoc = gDb.CreateDocument
+	Call caseDoc.ReplaceItemValue("Form", "AwardsCase")
+	serial = NextSerial(gDb, "NextCaseSerial")
+	Call caseDoc.ReplaceItemValue("CaseNumber", "VMA-" & Year(Now) & "-" & PadLeft(CStr(serial), 6, "0"))
+	Call caseDoc.ReplaceItemValue("Stage", STAGE_AUTHORIZED)
+	Call caseDoc.ReplaceItemValue("Source", source)
+	Call caseDoc.ReplaceItemValue("AuthFileName", SafeGetText(gAuthDoc, "FileName"))
+	Call caseDoc.ReplaceItemValue("AuthFileLine", lineNo)
+	Call caseDoc.ReplaceItemValue("ExternalRef", ref)
+	If Not IsNull(gAuthDate) Then Call caseDoc.ReplaceItemValue("AuthorizationDate", gAuthDate) Else Call caseDoc.ReplaceItemValue("AuthorizationDate", Now)
+	Call caseDoc.ReplaceItemValue("EnteredDate", Now)
+	Call caseDoc.ReplaceItemValue("EnteredBy", gSession.UserName)
+	Call caseDoc.ReplaceItemValue("VeteranLastName", lastName)
+	Call caseDoc.ReplaceItemValue("VeteranFirstName", firstName)
+	Call caseDoc.ReplaceItemValue("VeteranMI", UCase(Left(mi, 1)))
+	Call caseDoc.ReplaceItemValue("VeteranRank", rank)
+	Call caseDoc.ReplaceItemValue("ServiceNumber", svcNum)
+	dFrom = ParseLegacyDate(svcFrom): dTo = ParseLegacyDate(svcTo)
+	If Not IsNull(dFrom) Then Call caseDoc.ReplaceItemValue("ServiceFrom", dFrom)
+	If Not IsNull(dTo) Then Call caseDoc.ReplaceItemValue("ServiceTo", dTo)
+	Call caseDoc.ReplaceItemValue("Era", EraFromDates(dFrom, dTo))
+	Call caseDoc.ReplaceItemValue("Deceased", IIf(UCase(deceased) = "Y", "Yes", "No"))
+	Call caseDoc.ReplaceItemValue("Relationship", rel)
+	Call caseDoc.ReplaceItemValue("RequesterKey", key)
+	Call caseDoc.ReplaceItemValue("RequesterName", reqLast & ", " & reqFirst)
+	Call caseDoc.ReplaceItemValue("Priority", PriorityFromCode(priority))
+	Call caseDoc.ReplaceItemValue("ShipToName", reqFirst & " " & reqLast)
+	Call caseDoc.ReplaceItemValue("ShipToStreet", street)
+	Call caseDoc.ReplaceItemValue("ShipToCity", city)
+	Call caseDoc.ReplaceItemValue("ShipToState", UCase(st))
+	Call caseDoc.ReplaceItemValue("ShipToZIP", zip)
+	Call caseDoc.ReplaceItemValue("AssignedCSR", gSession.UserName)
+	Call caseDoc.ReplaceItemValue("LineCount", 0)
+	Call caseDoc.ReplaceItemValue("EngravingRequired", "No")
+	Call caseDoc.ReplaceItemValue("AgingFlag", "")
+	Call caseDoc.ReplaceItemValue("StatusHistory", Format$(Now, "mm/dd/yyyy hh:nn") & " | (new) -> Authorized | " & AGENT_NAME)
+	Call caseDoc.ComputeWithForm(False, False)
+	Call caseDoc.Save(True, False)
+	Set gCaseByRef(ref) = caseDoc
+	gCases = gCases + 1
+	Set CreateCaseFromFields = caseDoc
+	Exit Function
+ErrHandler:
+	Call AddLog("Error " & Err & " creating case for line " & lineNo & ": " & Error$)
+	gRejected = gRejected + 1
+	Exit Function
+End Function
+
+'++LotusScript Development Environment:2:2:CreateLineFromFields:1:8
+Sub CreateLineFromFields(ref As String, awardCode As String, qty As Integer, devices As Integer, engrave As String, engText As String, authority As String, lineNo As Long)
+	Dim caseDoc As NotesDocument
+	Dim lineDoc As NotesDocument
+	Dim info As Variant
+	Dim awardName As String, category As String
+	Dim n As Long
+	On Error GoTo ErrHandler
+	If Not IsElement(gCaseByRef(ref)) Then
+		Call AddLog("REJECTED line " & lineNo & ": award record for unknown case " & ref & " (orphan)")
+		gRejected = gRejected + 1
+		Exit Sub
+	End If
+	Set caseDoc = gCaseByRef(ref)
+	If IsElement(gAwardTable(UCase(Trim(awardCode)))) Then
+		info = Split(gAwardTable(UCase(Trim(awardCode))), "|")
+		awardName = info(0): category = info(1)
+	Else
+		' Unknown code: keep the code as the name so a CSR can fix it (creates the free-text award-name wart)
+		awardName = Trim(awardCode): category = ""
+		Call AddLog("WARNING line " & lineNo & ": unknown award code '" & awardCode & "' - stored as free text")
+	End If
+	If qty < 1 Then qty = 1
+	If qty > 3 Then
+		Call AddLog("WARNING line " & lineNo & ": quantity " & qty & " capped at 3")
+		qty = 3
+	End If
+	Set lineDoc = gDb.CreateDocument
+	Call lineDoc.ReplaceItemValue("Form", "AwardLine")
+	Call lineDoc.MakeResponse(caseDoc)
+	n = CLng(caseDoc.GetItemValue("LineCount")(0)) + 1
+	Call lineDoc.ReplaceItemValue("ParentCaseNumber", SafeGetText(caseDoc, "CaseNumber"))
+	Call lineDoc.ReplaceItemValue("ParentUNID", caseDoc.UniversalID)
+	Call lineDoc.ReplaceItemValue("VeteranName", SafeGetText(caseDoc, "VeteranLastName") & ", " & SafeGetText(caseDoc, "VeteranFirstName"))
+	Call lineDoc.ReplaceItemValue("LineNumber", n)
+	Call lineDoc.ReplaceItemValue("LineKey", SafeGetText(caseDoc, "CaseNumber") & "-" & PadLeft(CStr(n), 2, "0"))
+	Call lineDoc.ReplaceItemValue("AwardName", awardName)
+	Call lineDoc.ReplaceItemValue("AwardCode", UCase(Trim(awardCode)))
+	Call lineDoc.ReplaceItemValue("AwardCategory", category)
+	Call lineDoc.ReplaceItemValue("Quantity", qty)
+	Call lineDoc.ReplaceItemValue("SetType", "Full Size")
+	Call lineDoc.ReplaceItemValue("DeviceCount", devices)
+	If UCase(engrave) = "Y" Or IsEngravable(awardName) Then
+		Call lineDoc.ReplaceItemValue("Engrave", "Yes")
+		If Trim(engText) = "" Then engText = UCase(SafeGetText(caseDoc, "VeteranFirstName") & " " & SafeGetText(caseDoc, "VeteranMI") & " " & SafeGetText(caseDoc, "VeteranLastName"))
+		Call lineDoc.ReplaceItemValue("EngravingText", Left(UCase(Trim(engText)), 40))
+		Call caseDoc.ReplaceItemValue("EngravingRequired", "Yes")
+	Else
+		Call lineDoc.ReplaceItemValue("Engrave", "No")
+		Call lineDoc.ReplaceItemValue("EngravingText", "")
+	End If
+	Call lineDoc.ReplaceItemValue("Authority", Left(authority, 60))
+	Call lineDoc.ReplaceItemValue("LineStatus", "Authorized")
+	Call lineDoc.ReplaceItemValue("DocReaders", caseDoc.GetItemValue("DocReaders"))
+	Call lineDoc.Save(True, False)
+	Call caseDoc.ReplaceItemValue("LineCount", n)
+	Call caseDoc.Save(True, False)
+	gLines = gLines + 1
+	Exit Sub
+ErrHandler:
+	Call AddLog("Error " & Err & " creating award line " & lineNo & ": " & Error$)
+	gRejected = gRejected + 1
+	Exit Sub
+End Sub
+
+'++LotusScript Development Environment:2:1:RelationshipFromCode:1:8
+Function RelationshipFromCode(code As String) As String
+	Select Case UCase(Trim(code))
+	Case "SE", "": RelationshipFromCode = "Self"
+	Case "SP": RelationshipFromCode = "Spouse"
+	Case "SO": RelationshipFromCode = "Son"
+	Case "DA": RelationshipFromCode = "Daughter"
+	Case "PA": RelationshipFromCode = "Parent"
+	Case "SI": RelationshipFromCode = "Sibling"
+	Case "GC": RelationshipFromCode = "Grandchild"
+	Case Else: RelationshipFromCode = "Other NOK"
+	End Select
+End Function
+
+'++LotusScript Development Environment:2:1:PriorityFromCode:1:8
+Function PriorityFromCode(code As String) As String
+	Select Case UCase(Trim(code))
+	Case "E": PriorityFromCode = "Expedite"
+	Case "C": PriorityFromCode = "Congressional"
+	Case Else: PriorityFromCode = "Routine"
+	End Select
+End Function
+
+'++LotusScript Development Environment:2:1:EraFromDates:1:8
+Function EraFromDates(dFrom As Variant, dTo As Variant) As String
+	Dim y As Integer
+	If IsNull(dTo) Then
+		EraFromDates = ""
+		Exit Function
+	End If
+	y = Year(dTo)
+	If y <= 1946 Then
+		EraFromDates = "World War II"
+	ElseIf y <= 1955 Then
+		EraFromDates = "Korea"
+	ElseIf y <= 1975 Then
+		EraFromDates = "Vietnam"
+	ElseIf y <= 1990 Then
+		EraFromDates = "Cold War"
+	ElseIf y <= 1995 Then
+		EraFromDates = "Gulf War"
+	ElseIf y >= 2001 Then
+		EraFromDates = "Global War on Terrorism"
+	Else
+		EraFromDates = "Peacetime"
+	End If
+End Function

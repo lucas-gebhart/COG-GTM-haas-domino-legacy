@@ -1,0 +1,18 @@
+0120260615HRC0000720260613000016
+10H268331380Urquhart                      Frances             D7745    1967110719711229DAUrquhart                      Sandra              7450 Patton Ct Apt 21C        Columbus            GA31939     NRSFC         
+20H268331380VSM   0101N                                        HRC Awards and Decorations Bra
+20H268331380AAM   0101N                                        HRC Awards and Decorations Bra
+20H268331380BSM   0500YTEST QTY OVER LIMIT                     HRC Awards and Decorations Bra
+10H264098059Fortenbury                    Evelyn              T1370    1981041819880905SOFortenbury                    Timothy             9398 Pershing Ter Apt 1B      Sioux Falls         SD57133     YRSGM         
+20H264098059NDSM  0101N                                        HRC Awards and Decorations Bra
+20H264098059PB    0101N                                        HRC Awards and Decorations Bra
+10H264048125Jarvinen                      Darnell             N1808    1963100719671012DAJarvinen-Roe                  Hector              4008 Ridgway Ter              Shreveport          LA71121     NRPFC         
+20H264048125GCM   0101N                                        HRC Awards and Decorations Bra
+20H264048125NDSM  0102N                                        HRC Awards and Decorations Bra
+20H264048125AAM   0102N                                        HRC Awards and Decorations Bra
+10H265828825Fennimark                     Rafael               7983    1989010419950420SEFennimark                     Rafael              8965 Spruce St                Shreveport          LA71143     NRCW4         
+20H265828825ARCOM 0101YR. FENNIMARK                            HRC Awards and Decorations Bra
+20H26ZZZ0001XQZ   0100N                                        HRC Awards and Decorations Bra
+10H268331380Urquhart                      Frances             D7745    1967110719711229DAUrquhart                      Sandra              7450 Patton Ct Apt 21C        Columbus            GA31939     NRSFC         
+30UNKNOWN RECORD TYPE                                         
+9900000500001000000162

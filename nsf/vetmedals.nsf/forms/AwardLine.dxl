@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='AwardLine' alias='frmAwardLine' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ hide='web' bgcolor='white' noreplace='false' renderpassthrough='true' formtype='response'
+ inheritvalues='true' inheritfrom='AwardsCase'>
+<noteinfo noteid='11E' unid='3C8F0D52E7A95B1485258A1F00305D71' sequence='88'>
+<created><datetime>20040301T103000,00-05</datetime></created>
+<modified><datetime>20221005T090412,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<!-- AwardLine: one medal / decoration / badge / appurtenance authorized on a case. Response to AwardsCase.
+     Award names are drawn from the ($Awards) keyword list on the Profile document; the list is
+     allownew='true' so misspellings ("Army Commendation Medel") and abbreviations ("ARCOM") exist in the data. -->
+<code event='windowtitle'><formula>ParentCaseNumber + " line " + @Text(LineNumber) + ": " + AwardName</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'><code event='hidewhen'><formula>!@IsMember("[CSR]":"[TACOM]":"[Admin]"; @UserRoles)</formula></code><code event='click'><formula>@Command([EditDocument])</formula></code></action>
+<action title='Go to Case' icon='6'><code event='click'><formula>@Command([OpenDocument]; "0"; ParentUNID)</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='12pt' style='bold' name='Verdana' color='navy'/>Award Line</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='30%'/><tablecolumn width='70%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Case</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computedwhencomposed' name='ParentCaseNumber'><code event='value'><formula>CaseNumber</formula></code></field><run> </run><field type='text' kind='computedwhencomposed' name='ParentUNID'><code event='value'><formula>@Text(@DocumentUniqueID)</formula></code></field><run> </run><field type='text' kind='computedwhencomposed' name='VeteranName'><code event='value'><formula>VeteranLastName + ", " + VeteranFirstName</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Line Number</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='computedwhencomposed' name='LineNumber'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/><code event='value'><formula>@If(@IsError(@DbLookup("Notes":"NoCache"; ""; "(CaseLines)"; CaseNumber; 1)); 1; @Elements(@DbLookup("Notes":"NoCache"; ""; "(CaseLines)"; CaseNumber; 1)) + 1)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Award / Decoration</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='AwardName'>
+<keywords ui='combobox' allownew='true' columns='1'><formula>@DbLookup("Notes":"NoCache"; ""; "($Lookups)"; "Awards"; 2)</formula></keywords>
+<code event='inputvalidation'><formula>@If(@Trim(AwardName) = ""; @Failure("Select the award or decoration."); @Length(AwardName) &gt; 100; @Failure("Award name may not exceed 100 characters."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Award Code</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computed' name='AwardCode' description='Short code from the Awards keyword table (BSM, ARCOM, PH, GCM ...)'><code event='value'><formula>@If(@IsError(@DbLookup("Notes":"NoCache"; ""; "($Lookups)"; "Awards"; 3)); ""; @Subset(@Subset(@DbLookup("Notes":"NoCache"; ""; "($Lookups)"; "Awards"; 3); @Member(AwardName; @DbLookup("Notes":"NoCache"; ""; "($Lookups)"; "Awards"; 2))); -1))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Category</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='AwardCategory'><keywords ui='combobox' allownew='false'><textlist><text>Decoration</text><text>Service Medal</text><text>Campaign Medal</text><text>Badge</text><text>Ribbon</text><text>Appurtenance</text><text>Foreign Award</text></textlist></keywords></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Quantity / Set Type</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='editable' name='Quantity'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/><code event='defaultvalue'><formula>1</formula></code>
+<code event='inputvalidation'><formula>@If(!@IsNumber(Quantity) | Quantity &lt; 1; @Failure("Quantity must be at least 1."); Quantity &gt; 3; @Failure("Replacement awards are limited to one set (max 3 items per award, including miniature and lapel button)."); @Success)</formula></code></field><run> </run><field type='keyword' kind='editable' name='SetType'><keywords ui='combobox' allownew='false'><textlist><text>Full Size</text><text>Full Size + Miniature</text><text>Full Size + Miniature + Lapel</text><text>Ribbon Only</text></textlist></keywords><code event='defaultvalue'><formula>"Full Size"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Devices</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Devices' allowmultivalues='true'><keywords ui='checkbox' columns='3'><textlist><text>Oak Leaf Cluster (bronze)</text><text>Oak Leaf Cluster (silver)</text><text>V Device</text><text>Bronze Service Star</text><text>Silver Service Star</text><text>Arrowhead</text><text>Numeral</text><text>Clasp</text></textlist></keywords></field><run> count: </run><field type='number' kind='editable' name='DeviceCount'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/><code event='defaultvalue'><formula>0</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Engrave</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Engrave'><keywords ui='radiobutton' columns='2'><textlist><text>Yes</text><text>No</text></textlist></keywords>
+<code event='defaultvalue'><formula>@If(@IsMember(AwardName; "Purple Heart":"Bronze Star Medal":"Silver Star":"Distinguished Service Cross":"Soldier's Medal":"Army Commendation Medal":"Distinguished Flying Cross":"Air Medal":"Legion of Merit":"Distinguished Service Medal"); "Yes"; "No")</formula></code></field><run> text: </run><field type='text' kind='editable' name='EngravingText' description='Name as it should appear on the reverse, max 40 chars'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(EngravingText))</formula></code>
+<code event='inputvalidation'><formula>@If(Engrave = "Yes" &amp; @Trim(EngravingText) = ""; @Failure("Engraving text is required when Engrave = Yes."); @Length(EngravingText) &gt; 40; @Failure("Engraving text may not exceed 40 characters (engraver limit)."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Stock Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='StockNumber' description='NSN 8455-xx-xxx-xxxx'><code event='inputvalidation'><formula>@If(@Trim(StockNumber) = ""; @Success; @Matches(StockNumber; "{0-9}{0-9}{0-9}{0-9}-{0-9}{0-9}-{0-9}{0-9}{0-9}-{0-9}{0-9}{0-9}{0-9}"); @Success; @Failure("Stock number must be 9999-99-999-9999."))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Line Status</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='LineStatus'><keywords ui='combobox' allownew='true'><textlist><text>Authorized</text><text>Engraved</text><text>Assembled</text><text>Picked</text><text>Shipped</text><text>Backordered</text><text>Substituted</text></textlist></keywords><code event='defaultvalue'><formula>"Authorized"</formula></code></field><run> backorder ETA </run><field type='datetime' kind='editable' name='BackorderETA'><datetimeformat show='date' date='monthdayyear'/></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Authority</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Authority' description='Orders / citation reference from the authorization record (e.g. DA Form 638, GO 45, WD AGO 53-55)'/></par></tablecell></tablerow>
+</table>
+<pardef id='2' hide='read edit print preview'/>
+<par def='2'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true'><code event='value'><formula>DocReaders</formula></code></field></par>
+<par def='2'><field type='text' kind='computed' name='LineKey'><code event='value'><formula>ParentCaseNumber + "-" + @Right("00" + @Text(LineNumber); 2)</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+</form>

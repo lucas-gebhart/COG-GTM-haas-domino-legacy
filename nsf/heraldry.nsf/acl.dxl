@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE acl SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<acl xmlns='http://www.lotus.com/dxl' version='12.0' consistentacl='true' maxinternetaccess='editor'
+ adminserver='CN=HAAS-APP01/O=TACOM' adminnames='false' adminreaderauthor='false' uniformaccess='true'>
+<!--
+  Roles are the Domino authorization primitive used throughout the design:
+    Readers/Authors fields on Request store role names as "[Vendor]" etc.
+    Hide-when formulas test @UserRoles.
+    XPages test sessionScope.roles (populated in ccLayout beforePageLoad).
+  Vendors and "automation system" users are separate populations: vendors are in
+  the Heraldry-Vendors group (Author + [Vendor]); TACOM/DLA staff are in
+  TACOM-CHPSID-Staff / DLA-TroopSupport-Heraldry.
+-->
+<role name='[TACOM]'/>
+<role name='[DLA]'/>
+<role name='[Vendor]'/>
+<role name='[CSR]'/>
+<role name='[Engraver]'/>
+<role name='[Assembler]'/>
+<role name='[Warehouse]'/>
+<role name='[Admin]'/>
+<role name='[SESApprover]'/>
+<role name='[ReadOnlyAudit]'/>
+
+<aclentry name='-Default-' type='unspecified' level='noaccess' nodelete='true' publicreader='true'
+ publicwriter='false' replicatecopy='false'/>
+<aclentry name='Anonymous' type='unspecified' level='reader' nodelete='true' publicreader='true'
+ publicwriter='false' noreplicatecopy='true'>
+<!-- Anonymous reader access exists ONLY so that HeraldryHome.xsp, StatusInquiry.xsp and
+     Login.xsp render before the EAMS-A SAML redirect. Readers fields on every
+     Request/RequestLine/SESFlagRequest document exclude Anonymous. -->
+</aclentry>
+<aclentry name='LocalDomainServers' type='servergroup' level='manager' nodelete='false'
+ publicreader='true' publicwriter='true'>
+<role name='[Admin]'/><role name='[TACOM]'/><role name='[DLA]'/><role name='[Vendor]'/>
+<role name='[CSR]'/><role name='[SESApprover]'/>
+</aclentry>
+<aclentry name='OtherDomainServers' type='servergroup' level='noaccess'/>
+<aclentry name='CN=HAAS-APP01/O=TACOM' type='server' level='manager' nodelete='false'
+ publicreader='true' publicwriter='true'>
+<role name='[Admin]'/><role name='[TACOM]'/><role name='[DLA]'/><role name='[Vendor]'/>
+<role name='[CSR]'/><role name='[SESApprover]'/>
+</aclentry>
+<aclentry name='CN=HAAS-MAIL01/O=TACOM' type='server' level='editor' nodelete='true'/>
+<aclentry name='CN=HAAS Signer/O=HAAS' type='person' level='designer' nodelete='true'>
+<role name='[Admin]'/>
+</aclentry>
+
+<aclentry name='HAAS-Administrators' type='persongroup' level='manager' nodelete='false'
+ publicreader='true' publicwriter='true'>
+<role name='[Admin]'/><role name='[TACOM]'/><role name='[SESApprover]'/>
+</aclentry>
+<aclentry name='TACOM-CHPSID-Staff' type='persongroup' level='editor' nodelete='true'
+ publicreader='true' publicwriter='true' unreadmarks='false'>
+<role name='[TACOM]'/><role name='[CSR]'/>
+</aclentry>
+<aclentry name='TACOM-CHPSID-Heraldry-Leads' type='persongroup' level='editor' nodelete='false'
+ publicreader='true' publicwriter='true'>
+<role name='[TACOM]'/><role name='[CSR]'/><role name='[SESApprover]'/>
+</aclentry>
+<aclentry name='DLA-TroopSupport-Heraldry' type='persongroup' level='author' nodelete='true'
+ createdocs='false' publicreader='true' publicwriter='false'>
+<role name='[DLA]'/>
+</aclentry>
+<aclentry name='Heraldry-Vendors' type='persongroup' level='author' nodelete='true'
+ createdocs='false' publicreader='true' publicwriter='false'>
+<!-- Vendors see only documents whose Readers field (DocReaders) names their
+     vendor group, e.g. "Vendor-1QK47". See forms/Request.dxl DocReaders. -->
+<role name='[Vendor]'/>
+</aclentry>
+<aclentry name='Heraldry-Vendor-Admins' type='persongroup' level='editor' nodelete='true'
+ publicreader='true' publicwriter='false'>
+<role name='[Vendor]'/>
+</aclentry>
+<aclentry name='Army-Units-Requesters' type='persongroup' level='author' nodelete='true'
+ createdocs='true' publicreader='true' publicwriter='false'>
+<!-- Unit S4 / supply personnel authenticated via EAMS-A. Author access +
+     createdocs so they can submit DD1348-6 requests; DocAuthors on Request
+     is their own name so they can modify until release. -->
+</aclentry>
+<aclentry name='HAAS-Auditors' type='persongroup' level='reader' nodelete='true'
+ publicreader='true' publicwriter='false'>
+<role name='[ReadOnlyAudit]'/>
+</aclentry>
+
+<!-- Per-user entries. Names are synthetic. Left over from before group-based
+     administration was introduced (2011); flagged in README-design.md. -->
+<aclentry name='CN=Marlene Okafor/OU=CHPSID/O=TACOM' type='person' level='manager' nodelete='false'
+ publicreader='true' publicwriter='true'>
+<role name='[Admin]'/><role name='[TACOM]'/><role name='[CSR]'/><role name='[SESApprover]'/>
+</aclentry>
+<aclentry name='CN=Dwayne Petrakis/OU=CHPSID/O=TACOM' type='person' level='editor' nodelete='true'
+ publicreader='true' publicwriter='true'>
+<role name='[TACOM]'/><role name='[CSR]'/>
+</aclentry>
+<aclentry name='CN=Renata Vasquez-Holm/OU=CHPSID/O=TACOM' type='person' level='editor' nodelete='true'
+ publicreader='true' publicwriter='true'>
+<role name='[TACOM]'/><role name='[SESApprover]'/>
+</aclentry>
+<aclentry name='CN=Theodore Blankenship/OU=TroopSupport/O=DLA' type='person' level='author'
+ nodelete='true' createdocs='false' publicreader='true'>
+<role name='[DLA]'/>
+</aclentry>
+<aclentry name='CN=Priya Sundaresan/O=Sew-Rite Flag Company' type='person' level='author'
+ nodelete='true' createdocs='false' publicreader='true'>
+<role name='[Vendor]'/>
+</aclentry>
+<aclentry name='CN=Gus Halvorsen/O=Liberty Colors LLC' type='person' level='author'
+ nodelete='true' createdocs='false' publicreader='true'>
+<role name='[Vendor]'/>
+</aclentry>
+<aclentry name='CN=Domino Developer/O=HAAS' type='person' level='designer' nodelete='false'
+ publicreader='true' publicwriter='true'>
+<role name='[Admin]'/>
+</aclentry>
+<aclentry name='CN=Ret Hamlin/OU=CHPSID/O=TACOM' type='person' level='editor' nodelete='true'
+ publicreader='true' publicwriter='true'>
+<!-- User separated 2019; entry never removed (see README-design.md "warts"). -->
+<role name='[TACOM]'/><role name='[CSR]'/>
+</aclentry>
+
+<logentry><text>03/17/2004 10:12:04 AM CN=Domino Developer/O=HAAS updated -Default-</text></logentry>
+<logentry><text>09/02/2011 02:40:19 PM CN=Marlene Okafor/OU=CHPSID/O=TACOM added TACOM-CHPSID-Staff</text></logentry>
+<logentry><text>09/02/2011 02:41:55 PM CN=Marlene Okafor/OU=CHPSID/O=TACOM added Heraldry-Vendors</text></logentry>
+<logentry><text>06/11/2013 09:03:31 AM CN=Domino Developer/O=HAAS added role [SESApprover]</text></logentry>
+<logentry><text>02/22/2016 11:17:02 AM CN=Marlene Okafor/OU=CHPSID/O=TACOM added DLA-TroopSupport-Heraldry</text></logentry>
+<logentry><text>10/30/2019 04:55:48 PM CN=Marlene Okafor/OU=CHPSID/O=TACOM added HAAS-Auditors</text></logentry>
+<logentry><text>01/03/2025 04:14:55 PM CN=HAAS-APP01/O=TACOM updated Anonymous</text></logentry>
+</acl>

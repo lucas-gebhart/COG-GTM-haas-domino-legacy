@@ -1,0 +1,57 @@
+# httpd.cnf.sample - HAAS-APP01 web configuration notes
+# ---------------------------------------------------------------------------------------
+# Domino has not used a real httpd.cnf since R5; HTTP configuration lives in the Server
+# document (Internet Protocols > HTTP / Domino Web Engine) and in Web Site / URL-mapping
+# documents in names.nsf. This file is the developer's running commentary of those settings,
+# kept in the design repository because the Server document itself cannot be exported as DXL
+# with the application. SYNTHETIC.
+# ---------------------------------------------------------------------------------------
+
+# --- Web Site document: "HAAS Heraldry" -----------------------------------------------
+#   Host names        : heraldry.example.mil, heraldryhome.example.mil
+#   Home URL          : /heraldry.nsf/HeraldryHome.xsp
+#   Session auth      : Multiple servers (SSO)  - LtpaToken2 + SAML (EAMS-A) via idpcat.nsf
+#   Anonymous         : Yes  (needed for StatusInquiry.xsp; the ACL grants Anonymous Reader
+#                       on heraldry.nsf but Readers fields hide everything except the
+#                       StatusInquiry lookup view)
+#   Max active sessions: 2000; idle timeout 30 min
+#   TLS               : 1.2 only; DoD PKI server cert; HSTS header added in 2021 (see below)
+
+# --- URL mapping / redirection documents ------------------------------------------------
+#   /heraldryhome.nsf/*      -> /heraldry.nsf/*           (legacy host from the 2005 deployment;
+#                                                          public links still use heraldryhome.nsf)
+#   /heraldry/*              -> /heraldry.nsf/HeraldryHome.xsp
+#   /vetmedals/*             -> /vetmedals.nsf/CasesByStage?OpenView
+#   /names.nsf?Login         -> SAML redirect to EAMS-A; DOMRELAYSTATE cookie stores the target URL
+#   /.ibmxspres/*            -> served from the XPages runtime (dojo 1.9.7, xsp css). Not on CDN.
+#   /domjava/*               -> disabled (2014, IG finding)
+
+# --- Response headers (Internet Sites > HTTP Response Headers, added 2021-03) -------------
+#   X-Frame-Options: DENY
+#   X-Content-Type-Options: nosniff
+#   Strict-Transport-Security: max-age=31536000; includeSubDomains
+#   Content-Security-Policy: default-src 'self'   (XPages inline scripts required 'unsafe-inline'
+#                                                  on script-src until the dojo aggregation fix;
+#                                                  the render harness ships the strict form)
+
+# --- Rules -------------------------------------------------------------------------------
+#   Deny  : /*.nsf/*?ReadViewEntries  for Anonymous   (2016 - view scraping)
+#   Deny  : /*.nsf/$DefaultView, /*.nsf/$DefaultForm for Anonymous
+#   Deny  : /webadmin.nsf, /log.nsf, /statrep.nsf, /admin4.nsf, /events4.nsf from *
+#   Allow : /heraldry.nsf/StatusInquiry.xsp, /heraldry.nsf/HeraldryHome.xsp, /heraldry.nsf/haas.css,
+#           /heraldry.nsf/tacom_seal.gif, /heraldry.nsf/.ibmxspres/* for Anonymous
+#   File protection: /haas/*  -> GET only for -Default-; POST for authenticated users
+
+# --- Domino Web Engine -------------------------------------------------------------------
+#   Java servlet support     : Domino Servlet Manager (for haas-xsp-1.4.2.jar AuditPhaseListener)
+#   Generate HTML for all fields: Yes   (legacy Request?OpenForm pages depend on hidden fields)
+#   Character set            : UTF-8
+#   Default lines per view page: 30  (Count=30 appended to ?OpenView URLs)
+#   Maximum lines per view page: 1000
+#   Redirect to resolve external link: By server name
+#   Web agent timeout        : 60 s  (RebuildStatusInquiryIndex exceeds this; run from Notes)
+
+# --- Log -----------------------------------------------------------------------------------
+#   Access log (Common) to domlog.nsf; log filter excludes /.ibmxspres/* and *.css
+#   Every XPage request is also written to haaslog.nsf by AuditPhaseListener with user,
+#   role set, page, documentId and result (IG requirement, 2016).

@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE database SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<database xmlns='http://www.lotus.com/dxl' version='12.0' maintenanceversion='2.0'
+ replicaid='C1258A1F00305D71' path='haas\vetmedals.nsf' title='Veteran Medals &amp; Awards Case System'
+ fromtemplate='' designerversion='12.0.2' increasemaxfields='true' allowbackgroundagents='true'
+ allowstoredforms='false' usejavascriptinpages='true' allowsoftdeletions='true'
+ softdeletionsexpirein='48' documentsummary16mb='true' uselz1='true' compressdesign='true'
+ compressdocuments='true' showinopendialog='true' listinreplica='true' allowdesignlocking='true'
+ inheritdesignfromtemplate='false' maxupdatedbylistlength='20' maxrevisionslistlength='20'
+ daysToPurgeDeletions='90' allowmoreFields='true' unreadmarks='never' optimizedocumenttable='true'
+ replicationhistory='true'>
+<databaseinfo dbid='C1258A1F00305D71' odsversion='55' percentused='68.9' numberofdocuments='15102'
+ diskspace='2415919104' replicaid='C1258A1F00305D71' created='20040218T093000,00-05'
+ designmodified='20241118T101210,00-05' lastdesigntemplateupdate='' filepath='haas\vetmedals.nsf'
+ category='Awards;TACOM;CHPSID' >
+<datamodified><datetime>20260918T073115,00-04</datetime></datamodified>
+<designmodified><datetime>20241118T101210,00-05</datetime></designmodified>
+</databaseinfo>
+<databasescript>
+<code event='postopen'><lotusscript>Sub Postopen(Source As Notesuidatabase)
+	' Warn CSRs when the nightly aging agent has not run (AgingLastRun older than 36 hours)
+	Dim s As New NotesSession
+	Dim prof As NotesDocument
+	Dim lastRun As Variant
+	Set prof = Source.Database.GetProfileDocument("Profile")
+	If prof Is Nothing Then Exit Sub
+	If prof.HasItem("AgingLastRun") Then
+		lastRun = prof.GetItemValue("AgingLastRun")(0)
+		If IsDate(lastRun) Then
+			If (Now - CDat(lastRun)) &gt; 1.5 Then
+				Msgbox "NightlyAging has not run since " &amp; Format$(lastRun, "mm/dd/yyyy hh:nn") &amp; ". Aging flags may be stale.", 48, "Veteran Medals &amp; Awards"
+			End If
+		End If
+	End If
+End Sub</lotusscript></code>
+</databasescript>
+<launchsettings>
+<noteslaunch whenopened='openframeset' frameset='fsCases'/>
+<weblaunch whenopened='openview' view='CasesByStage'/>
+</launchsettings>
+<!--
+  HAAS - Veteran Medals & Awards Case System (vetmedals.nsf)
+  ===========================================================================
+  SYNTHETIC design export - a stand-in for the awards-fulfilment half of the
+  Clothing & Heraldry PSID mission. Nothing here is copied from, or claims to be,
+  the real internal design.
+
+  Business flow modelled:
+    NPRC (St. Louis) / Army HRC determine eligibility and transmit an electronic
+    authorization file  ->  ImportAuthorizationFile creates AwardsCase + AwardLine
+    documents and a Requester (veteran / next-of-kin)  ->  CSR review  ->
+    Engraving (EngravingJob)  ->  Assembly / QC  ->  Warehouse pick  ->
+    Ship (ShipmentRecord)  ->  Closed.  Historic target: case complete within
+    60-75 days of entry (NightlyAging flags 60 = amber, 75 = red).
+
+  Design summary:
+    Forms   : AwardsCase, AwardLine (response), Requester, AuthorizationFile,
+              EngravingJob, ShipmentRecord, CaseNote (response), Profile
+    Views   : CasesByStage, CasesByAuthDate, AgingCases, EngravingQueue,
+              AssemblyQueue, WarehousePick, ShipConfirm, CSRLookup, ($All)
+    Agents  : ImportAuthorizationFile (manual / on file arrival), NightlyAging
+              (scheduled 01:00), ArchiveClosedCases (scheduled weekly Sunday)
+    XPages  : CaseView, EngravingQueue, CSRLookup; ccLayout / ccStatusBanner (copies)
+    Script  : HAASCommon (copy of heraldry.nsf library, drifted), HAASAwards
+-->
+<item name='$TITLE'><text>Veteran Medals &amp; Awards Case System</text></item>
+<item name='$Flags'><text>7Jn</text></item>
+<item name='$Class'><text>0x4f0</text></item>
+<item name='$Modified'><datetime>20241118T101210,00-05</datetime></item>
+<item name='$DesignVersion'><text>12.0.2</text></item>
+<item name='$TemplateBuild'><text>HAAS-VETMEDALS-2024-11</text></item>
+<item name='$TemplateBuildDate'><datetime>20241118T100000,00-05</datetime></item>
+<item name='$FTIndexEnabled'><text>1</text></item>
+<item name='$DBIDPrefix'><text>haas</text></item>
+<item name='$UnreadMarks'><text>Never</text></item>
+<item name='$Category'><textlist><text>Awards</text><text>TACOM</text><text>CHPSID</text></textlist></item>
+</database>
