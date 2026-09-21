@@ -86,7 +86,7 @@ pre { font-family: "Courier New", Courier, monospace; font-size: 11px; backgroun
 #dominoNav .navHead { font-weight: bold; color: #003366; margin: 8px 0 3px; border-bottom: 1px solid #99aacc; }
 #dominoNav .navLink { display: block; padding: 2px 4px; text-decoration: none; }
 #dominoNav .navLink:hover { background: #dfe6f3; text-decoration: underline; }
-#dominoNav .navCurrent { background: #4a6ea9; color: #ffffff; font-weight: bold; }
+#dominoNav .navCurrent, #dominoNav .navCurrent:hover { background: #4a6ea9; color: #ffffff; font-weight: bold; }
 #dominoContent { padding: 6px 12px 20px 12px; }
 #dominoContentInner { overflow-x: auto; }
 #dominoFooter {

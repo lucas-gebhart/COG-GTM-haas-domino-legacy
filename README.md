@@ -40,6 +40,7 @@ export/                      what a migration team receives
 tools/
   generate_fixtures.py       deterministic generator (seed 20040218, as-of 2026-09-01) for everything under export/
   inventory.js               design-inventory generator -> docs/DESIGN-INVENTORY.md (and --check for drift)
+  screens.js                 docs/SCREENS.md generator from docs/screens/captions.tsv (and --check for drift)
 harness/                     Node rendering harness: serves the app in a browser with the classic Domino web look
   server.js, reset.js        npm start / npm run reset
   lib/                       DXL + XSP parsers, @Formula interpreter, document store, view renderer, agents, audit log
@@ -48,7 +49,7 @@ harness/                     Node rendering harness: serves the app in a browser
   test/                      node:test suites (parsers, formulas, importer, aging, store, every route)
 docs/
   DESIGN-INVENTORY.md        generated: every form/field/validation, view/selection/column, agent, XPage, ACL role
-  SCREENS.md + screens/      screenshots of every harness page and workflow state
+  SCREENS.md + screens/      generated: screenshots of every harness page and workflow state, captions.tsv
 ```
 
 ## Running it
@@ -63,6 +64,7 @@ npm start                       # http://localhost:8088/  (HTTP; the Secure cook
 npm run reset                   # drop harness/data/*.json and reseed the store from export/
 python3 tools/generate_fixtures.py   # regenerate export/ byte-identically
 npm run inventory               # regenerate docs/DESIGN-INVENTORY.md (node tools/inventory.js --check verifies)
+npm run screens                 # regenerate docs/SCREENS.md from docs/screens/captions.tsv
 ```
 
 Sign in at `/names.nsf?Login`. Production would authenticate through EAMS-A SAML; the harness offers a

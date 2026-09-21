@@ -15,7 +15,8 @@
     "fixtures": "python3 tools/generate_fixtures.py",
     "inventory": "node tools/inventory.js",
     "lint": "eslint .",
-    "test": "node --test \"harness/test/*.test.js\""
+    "test": "node --test \"harness/test/*.test.js\"",
+    "screens": "node tools/screens.js"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

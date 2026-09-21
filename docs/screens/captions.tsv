@@ -1,0 +1,83 @@
+filename	caption
+001-login.png	`/names.nsf?Login` — EAMS-A / SAML login stub with the synthetic persona table (no password; `DomAuthSessId` session cookie is issued).
+002-heraldry-home.png	`HeraldryHome.xsp` — requester landing page with request links, status counts and the Notes-blue header bar.
+003-request-new.png	`Request?OpenForm` — blank DD Form 1348-6 requisition (blocks 1-3, 4-12, 13, 27) with catalog line item.
+004-request-validation-errors.png	Submitting invalid DODAAC / UIC and missing required fields returns HTTP 400 with the Domino-style validation error table produced by the form's @Formulas.
+005-request-saved.png	Request `W6KJAA62640801` saved as Submitted with one line (quantity 2) and status history.
+006-modify-landing.png	`ModifyRequest.xsp` landing — the requester's editable (not yet released) requests.
+007-modify-request.png	`ModifyRequest.xsp?documentId=…` — header fields, justification and per-line quantity are editable.
+008-request-modified.png	Justification change saved; the request document shows the updated text and a modification entry in the status history.
+009-quantity-update-saved.png	Line quantity updated from 2 to 3; `ExtendedPrice` re-extended by `@Round(Quantity * UnitPrice; 0.01)` to $92.31 at $30.77 each.
+010-request-total-reextended.png	Parent request `TotalValue` follows the line and now reads $92.31.
+011-modify-quantity-over-limit.png	Quantity 9999 rejected with HTTP 400 and the catalog item's maximum-quantity validation; saved quantity remains 3.
+012-modify-quantity-nonnumeric.png	Non-numeric quantity `ABC` rejected with HTTP 400 and the whole-number validation message.
+013-status-inquiry-document.png	`StatusInquiry.xsp` — anonymous lookup form by document number, with optional DODAAC filter.
+014-status-inquiry-number-result.png	Inquiry by document number returns the new request, its lines and its status history.
+015-status-inquiry-dodaac-error.png	DODAAC-only submission returns the "Enter a document number" validation message instead of an empty page.
+016-second-request-saved.png	Second request `W6KJAA62640802` created for the cancellation path.
+017-request-cancelled.png	`CancelRequest` — second request and its line show status Cancelled with the cancellation reason in the history.
+018-ses-request-form.png	`SESFlag.xsp` — Senior Executive Service flag request form with the existing SES queue.
+019-ses-request-submitted.png	SES flag request `SES-2026-0061` submitted by the unit requester (status Submitted).
+020-request-released-to-vendor.png	`ReleaseToVendor` by the TACOM heraldry lead — request assigned to the vendor, `ReleasedDate` set, modification lock note shown.
+021-modify-blocked-after-release.png	Requester attempting `ModifyRequest.xsp` on the released request receives HTTP 403 and the legacy `Error 4091` block.
+022-quantity-blocked-after-release.png	A stale line-quantity form submitted after release also returns HTTP 403 / `Error 4091`.
+023-released-total-unchanged.png	Released request retains quantity 3 and total $92.31 after the blocked update attempts.
+024-ses-request-approved.png	`[SESApprover]` approves `SES-2026-0061`; status Approved with approver and date recorded.
+025-vendor-queue-whitcombe.png	`VendorQueue.xsp?vendor=…` viewed by TACOM staff — released work for Liberty Colors LLC.
+026-vendor-queue-halvorsen.png	Same vendor queue as the `[Vendor]` persona (Halvorsen), limited to their own vendor's work.
+027-requests-by-status.png	`RequestsByStatus?OpenView` — categorized `<table border=1>` view with twisties and document counts.
+028-requests-collapsed.png	Collapse All — only category rows remain, paged by category.
+029-requests-expanded.png	Expand All restores the document rows.
+030-requests-twisty-closed.png	A single category twisty collapsed.
+031-requests-category-filter.png	Category link restricts the view to one status (`RestrictToCategory`).
+032-requests-by-unit.png	`RequestsByUnit?OpenView` — requests categorized by unit designation.
+033-requests-by-dodaac.png	`RequestsByDODAAC?OpenView` — requests categorized by DODAAC / UIC.
+034-open-vendor-work.png	`OpenVendorWork?OpenView` — released, unfulfilled requests categorized by vendor.
+035-ses-flag-queue.png	`SESFlagQueue?OpenView` — SES flag requests by status.
+036-heraldic-catalog.png	`HeraldicCatalog?OpenView` — 120 heraldic items (guidons, colors, streamers, insignia) with NSN-like stock numbers and quantity limits.
+037-status-inquiry-view.png	`StatusInquiry?OpenView` — the lookup view behind `StatusInquiry.xsp`.
+038-heraldry-all.png	`($All)?OpenView` — every heraldry document, including response hierarchy indentation.
+039-heraldry-lookups.png	`($Lookups)?OpenView` — hidden keyed lookup view.
+040-request-with-attachments.png	Seeded request document (`?OpenDocument`) with `$FILE` attachment links, Readers/Authors items and `$UpdatedBy`.
+041-file-attachment-stub.png	`/0/<unid>/$File/<name>` — attachment metadata stub explaining that attachment bytes are not part of the export.
+042-vet-casesbystage.png	`vetmedals.nsf/CasesByStage?OpenView` — awards cases categorized by stage with aging chips.
+043-vet-casesbyauthdate.png	`CasesByAuthDate?OpenView` — cases by authorization date (including the mixed-format text dates).
+044-vet-agingcases.png	`AgingCases?OpenView` — open cases past the 60 (amber) / 75 (red) day thresholds.
+045-vet-engravingqueue.png	`EngravingQueue?OpenView` — Domino view of engraving jobs by status.
+046-vet-assemblyqueue.png	`AssemblyQueue?OpenView` — cases at Assembly/QC.
+047-vet-warehousepick.png	`WarehousePick?OpenView` — cases at Warehouse with pick-bin locations.
+048-vet-shipconfirm.png	`ShipConfirm?OpenView` — shipped cases with carrier and tracking.
+049-vet-csrlookup.png	`CSRLookup?OpenView` — cases categorized by veteran last name.
+050-vet-all.png	`vetmedals.nsf/($All)?OpenView` — every veteran medals document.
+051-caseview-authorized.png	`CaseView.xsp?documentId=…` — case `VMA-2025-000006` at Authorized with the six-stage tracker, award lines and notes.
+052-case-note-added.png	Case note added and persisted on the case.
+053-case-on-hold.png	Case placed On Hold with hold reason; "Stage Before Hold" retains Authorized and the tracker flags the non-canonical stage.
+054-case-hold-released.png	Hold released — case returns to Authorized.
+055-case-engraving.png	Case advanced to Engraving (engraving job created).
+056-case-advance-denied.png	`[Assembler]` persona cannot advance an Engraving-stage case — message shown and no advance control rendered.
+057-case-assembly-qc.png	Case advanced to Assembly/QC by the TACOM lead.
+058-case-warehouse.png	Case advanced to Warehouse.
+059-case-shipped.png	Case advanced to Shipped with the shipment record (carrier, tracking).
+060-case-closed.png	Case advanced to Closed; all stage markers complete and the case is locked.
+061-engraving-queue.png	`EngravingQueue.xsp` — engraving work queue with Queued / In Progress / Complete filters.
+062-engraving-started.png	Engraving job started — status In Progress with engraver and start time.
+063-engraving-completed.png	Engraving job `ENG-2026-01085` Complete with proof check recorded.
+064-csr-lookup.png	`CSRLookup.xsp` — customer-service search form.
+065-csr-case-number.png	Lookup by case number returns the single case.
+066-csr-last-name.png	Lookup by veteran last name returns the matching cases.
+067-csr-ssn-last-four.png	Lookup by SSN last-4 (`5197`) matches `VMA-2017-000001` with masked `ServiceNumber` `***-**-5197`.
+068-design-inventory.png	`/design` — design inventory of both databases (forms, views, agents, XPages with counts) with the left navigation intact at 1280 px.
+069-design-form-request.png	`/design` form detail — `Request` fields, kinds and validation / translation formulas.
+070-design-view-requests-by-status.png	`/design` view detail — `RequestsByStatus` selection formula, columns and DXL source.
+071-design-agent-nightly-aging.png	`/design` agent detail — `NightlyAging` trigger metadata and LotusScript source.
+072-design-xpage-heraldry-home.png	`/design` XPage detail — `HeraldryHome.xsp` control census and source.
+073-agents.png	`/agents` — Agents menu with `NightlyAging`, `ImportAuthorizationFile` (sample file or multipart upload) and the other manual agents.
+074-nightly-aging-results.png	`NightlyAging` run — 783 open cases processed, 49 amber, 636 red, 0 unparseable dates; log readable on black.
+075-import-sample-results.png	`ImportAuthorizationFile` on the HRC sample — 8 cases / 19 lines created, 3 intentionally malformed records rejected ("Imported with Errors").
+076-import-multipart-file-selected.png	NPRC sample selected in the file input for a multipart upload.
+077-import-upload-results.png	Multipart NPRC import — 8 cases / 23 lines created, 0 rejected.
+078-audit-log.png	`/audit` — JSON audit trail (`harness/logs/audit.jsonl`) with the current nav link hovered; wide table scrolls inside the content cell.
+079-audit-request-events.png	Audit rows for request create / modify / cancel / release and the authorization failures from the blocked modifications.
+080-audit-horizontal-scroll.png	Audit content scrolled 660 px horizontally — navigation column keeps its width.
+081-domino-error-404.png	Unknown view returns the generic Domino-style `Error 404` page (details only in the internal log).
+082-design-horizontal-scroll.png	Wide `Request` form design table scrolls horizontally inside the content cell with navigation intact.

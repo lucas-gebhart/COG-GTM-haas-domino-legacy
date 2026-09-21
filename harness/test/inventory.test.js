@@ -161,3 +161,21 @@ test('the rendered Markdown contains the cross-database summary and migration no
   assert.ok(inventory.migrationNotes.length >= 3 && inventory.migrationNotes.length <= 6);
   assert.doesNotMatch(md, /demo/i);
 });
+
+test('docs/SCREENS.md is generated from docs/screens/captions.tsv and references every screenshot', () => {
+  const screens = require('../../tools/screens');
+  const cwd = process.cwd();
+  process.chdir(repoRoot);
+  try {
+    const md = screens.build();
+    assert.equal(fs.readFileSync(path.join(repoRoot, 'docs', 'SCREENS.md'), 'utf8'), md, 'docs/SCREENS.md is stale; run node tools/screens.js');
+    const pngs = fs.readdirSync(path.join(repoRoot, 'docs', 'screens')).filter((f) => f.endsWith('.png'));
+    assert.ok(pngs.length >= 60);
+    for (const f of pngs) {
+      assert.ok(md.includes(`](screens/${f})`), `${f} not referenced in docs/SCREENS.md`);
+    }
+    assert.doesNotMatch(md, /demo/i);
+  } finally {
+    process.chdir(cwd);
+  }
+});
