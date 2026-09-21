@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='CasesByAuthDate' alias='ByAuthDate|vwAuth' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='true' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='false' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='false'
+ nomenu='false' allowcustomizations='true'>
+<noteinfo noteid='146' unid='C2D3E4F5A6B7C8D985258A1F00305D71' sequence='54'>
+<created><datetime>20040305T091500,00-05</datetime></created>
+<modified><datetime>20190228T144022,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT Form = &quot;AwardsCase&quot; &amp; !@IsAvailable($Conflict) &amp; !@IsAvailable($Archived)</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Open Authorization File' icon='6'><code event='click'><formula>@Command([OpenView]; &quot;($AuthFiles)&quot;; AuthFileName)</formula></code></action>
+</actionbar>
+<column itemname='AuthYearMonth' width='14' resizable='true' sort='descending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Authorization Month'/>
+<code event='value'><formula>@If(@IsTime(AuthorizationDate); @Text(@Year(AuthorizationDate)) + &quot;-&quot; + @Right(&quot;0&quot; + @Text(@Month(AuthorizationDate)); 2); &quot;(Unparseable date: &quot; + @Text(AuthorizationDate) + &quot;)&quot;)</formula></code>
+</column>
+<column itemname='AuthorizationDate' width='10' resizable='true' sort='descending'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Authorized'/>
+<code event='value'><formula>@If(@IsTime(AuthorizationDate); @Text(AuthorizationDate; &quot;D0S0&quot;); @Text(AuthorizationDate))</formula></code>
+</column>
+<column itemname='CaseNumber' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Case Number'/>
+<code event='value'><formula>CaseNumber</formula></code>
+</column>
+<column itemname='Veteran' width='24' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Veteran'/>
+<code event='value'><formula>VeteranLastName + &quot;, &quot; + VeteranFirstName</formula></code>
+</column>
+<column itemname='Source' width='7' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Source'/>
+<code event='value'><formula>Source</formula></code>
+</column>
+<column itemname='AuthFileName' width='26' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Authorization File'/>
+<code event='value'><formula>AuthFileName + @If(@IsNumber(AuthFileLine); &quot; #&quot; + @Text(AuthFileLine); &quot;&quot;)</formula></code>
+</column>
+<column itemname='Stage' width='12' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Stage'/>
+<code event='value'><formula>Stage</formula></code>
+</column>
+<column itemname='EnteredDate' width='10' resizable='true'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Entered'/>
+<code event='value'><formula>@Text(EnteredDate; &quot;D0S0&quot;)</formula></code>
+</column>
+<column itemname='Lag' width='8' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Auth-&gt;Entry (days)'/>
+<code event='value'><formula>@If(@IsTime(AuthorizationDate); @Text(@Integer((EnteredDate - AuthorizationDate) / 86400)); &quot;?&quot;)</formula></code>
+</column>
+<item name='$Comment'><text>Cases grouped by authorization month. The category formula exposes the mixed-date-format wart: AuthorizationDate was a text field until the 2009 redesign and ~4% of documents still hold text values (&#x27;3/4/2008&#x27;, &#x27;04 MAR 08&#x27;, &#x27;2008-03-04&#x27;) that @IsTime rejects.</text></item>
+</view>

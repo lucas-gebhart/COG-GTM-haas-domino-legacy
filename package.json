@@ -1,0 +1,26 @@
+{
+  "name": "haas-domino-legacy",
+  "version": "1.0.0",
+  "description": "HAAS - Heraldry & Awards Automation System: synthetic HCL Domino/XPages legacy application source with a Node render harness",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "harness/server.js",
+  "scripts": {
+    "start": "node harness/server.js",
+    "reset": "node harness/reset.js",
+    "fixtures": "python3 tools/generate_fixtures.py",
+    "inventory": "node tools/inventory.js",
+    "lint": "eslint .",
+    "test": "node --test \"harness/test/*.test.js\"",
+    "screens": "node tools/screens.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "eslint": "9.39.1",
+    "globals": "16.4.0"
+  }
+}

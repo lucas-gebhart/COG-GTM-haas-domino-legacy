@@ -1,0 +1,80 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+' Agent: (AdvanceStage)  - hidden, run from form/view action buttons via @Command([ToolsRunMacro])
+' Moves each selected AwardsCase one stage forward using HAASAwards.AdvanceCase. When run from an
+' EngravingJob or ShipmentRecord document it resolves the parent case by CaseNumber first.
+Option Public
+Option Declare
+Use "HAASCommon"
+Use "HAASAwards"
+
+'++LotusScript Development Environment:2:2:Initialize:1:10
+Sub Initialize
+	Dim s As NotesSession
+	Dim db As NotesDatabase
+	Dim ws As NotesUIWorkspace
+	Dim coll As NotesDocumentCollection
+	Dim doc As NotesDocument
+	Dim caseDoc As NotesDocument
+	Dim v As NotesView
+	Dim roles As Variant
+	Dim cur As String, result As String
+	Dim n As Integer
+	On Error GoTo ErrHandler
+	Set s = New NotesSession
+	Set db = s.CurrentDatabase
+	roles = Evaluate("@UserRoles")
+	Set coll = db.UnprocessedDocuments
+	Set doc = coll.GetFirstDocument
+	Do Until doc Is Nothing
+		Select Case SafeGetText(doc, "Form")
+		Case "AwardsCase"
+			Set caseDoc = doc
+		Case "EngravingJob", "ShipmentRecord"
+			Set v = db.GetView("CasesByStage")
+			Set caseDoc = v.GetDocumentByKey(SafeGetText(doc, "CaseNumber"), True)
+			If caseDoc Is Nothing Then
+				Set caseDoc = db.Search({Form = "AwardsCase" & CaseNumber = "} & SafeGetText(doc, "CaseNumber") & {"}, Nothing, 1).GetFirstDocument
+			End If
+		Case Else
+			Set caseDoc = Nothing
+		End Select
+		If Not caseDoc Is Nothing Then
+			cur = SafeGetText(caseDoc, "Stage")
+			If Not RoleMayAdvance(roles, cur) Then
+				Msgbox "Your role cannot advance a case from '" & cur & "'.", 48, APP_TITLE
+			Else
+				result = AdvanceCase(db, caseDoc, s.CommonUserName)
+				If result = "" Then
+					Msgbox "Case " & SafeGetText(caseDoc, "CaseNumber") & " could not be advanced from '" & cur & "'. See the agent log.", 16, APP_TITLE
+				Else
+					n = n + 1
+				End If
+			End If
+		End If
+		Set doc = coll.GetNextDocument(doc)
+	Loop
+	If n > 0 Then
+		Set ws = New NotesUIWorkspace
+		Call ws.ViewRefresh
+	End If
+	Exit Sub
+ErrHandler:
+	Msgbox "Error " & Err & ": " & Error$ & " (line " & Erl & ")", 16, APP_TITLE
+	Exit Sub
+End Sub
+
+'++LotusScript Development Environment:2:1:RoleMayAdvance:1:8
+Function RoleMayAdvance(roles As Variant, fromStage As String) As Boolean
+	If IsMember(roles, "[TACOM]") Or IsMember(roles, "[Admin]") Then
+		RoleMayAdvance = True
+		Exit Function
+	End If
+	Select Case fromStage
+	Case STAGE_AUTHORIZED: RoleMayAdvance = IsMember(roles, "[CSR]") Or IsMember(roles, "[Engraver]")
+	Case STAGE_ENGRAVING: RoleMayAdvance = IsMember(roles, "[Engraver]")
+	Case STAGE_ASSEMBLY: RoleMayAdvance = IsMember(roles, "[Assembler]")
+	Case STAGE_WAREHOUSE: RoleMayAdvance = IsMember(roles, "[Warehouse]")
+	Case STAGE_SHIPPED: RoleMayAdvance = IsMember(roles, "[CSR]") Or IsMember(roles, "[Warehouse]")
+	Case Else: RoleMayAdvance = False
+	End Select
+End Function

@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='AuthorizationFile' alias='frmAuthFile' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ hide='web' bgcolor='white' noreplace='false' renderpassthrough='true'>
+<noteinfo noteid='12A' unid='5EAB2F74A9CB7D3685258A1F00305D71' sequence='44'>
+<created><datetime>20060412T091500,00-04</datetime></created>
+<modified><datetime>20200302T081940,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<!--
+  AuthorizationFile - one document per HRC/NPRC electronic authorization transmission.
+  The raw file is attached ($FILE) and parsed by ImportAuthorizationFile, which writes the
+  parse statistics back here. Two layouts are supported:
+    * HRC fixed-width  (record type "01" header / "10" case / "20" award / "99" trailer)
+    * NPRC pipe-delimited (header line "NPRC-AWD|v2|...")
+  See export/authorization-files/ for samples and agents/ImportAuthorizationFile.lss for the parser.
+-->
+<code event='windowtitle'><formula>"Authorization File: " + FileName + " (" + ImportStatus + ")"</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Import Now' icon='12'>
+<code event='hidewhen'><formula>ImportStatus = "Imported" | !@IsMember("[Importer]":"[Admin]"; @UserRoles)</formula></code>
+<code event='click'><formula>@If(@Prompt([YesNo]; "Import"; "Parse " + FileName + " and create awards cases now?"); @Command([ToolsRunMacro]; "ImportAuthorizationFile"); "")</formula></code></action>
+<action title='View Cases Created' icon='6'><code event='hidewhen'><formula>CasesCreated = 0</formula></code><code event='click'><formula>@Command([OpenView]; "CasesByAuthDate"; @Text(AuthorizationDate))</formula></code></action>
+<action title='Detach File' icon='75'><code event='click'><formula>@Command([AttachmentDetachAll])</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='12pt' style='bold' name='Verdana' color='navy'/>HRC / NPRC Awards Authorization File</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='30%'/><tablecolumn width='70%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>File Name</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='FileName'><code event='inputvalidation'><formula>@If(@Trim(FileName) = ""; @Failure("File name is required."); !@Matches(@UpperCase(FileName); "*.TXT") &amp; !@Matches(@UpperCase(FileName); "*.DAT") &amp; !@Matches(@UpperCase(FileName); "*.AWD"); @Failure("Authorization files are .txt, .dat or .awd."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Source Agency</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='SourceAgency'><keywords ui='radiobutton' columns='2'><textlist><text>HRC</text><text>NPRC</text></textlist></keywords><code event='inputvalidation'><formula>@If(!@IsMember(SourceAgency; "HRC":"NPRC"); @Failure("Select the source agency."); @Success)</formula></code></field><run> layout </run><field type='keyword' kind='computed' name='Layout'><keywords ui='combobox'><textlist><text>HRC-FIXED</text><text>NPRC-DELIM</text></textlist></keywords><code event='value'><formula>@If(SourceAgency = "HRC"; "HRC-FIXED"; "NPRC-DELIM")</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Transmission Date</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='TransmissionDate'><datetimeformat show='date' date='monthdayyear'/><code event='defaultvalue'><formula>@Today</formula></code></field><run> received </run><field type='datetime' kind='computedwhencomposed' name='ReceivedDate'><datetimeformat show='datetime' date='monthdayyear' time='hourminute'/><code event='value'><formula>@Now</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Authorization Date (from header)</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='AuthorizationDate'><datetimeformat show='date' date='monthdayyear'/></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Attached File</run></par></tablecell>
+<tablecell><par def='1'><field type='richtext' kind='editable' name='FileBody' description='Attach the raw transmission here ($FILE)'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Import Status</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='ImportStatus'><keywords ui='combobox' allownew='false'><textlist><text>Received</text><text>Imported</text><text>Imported with Errors</text><text>Rejected</text></textlist></keywords><code event='defaultvalue'><formula>"Received"</formula></code></field><run> on </run><field type='datetime' kind='editable' name='ImportedDate'><datetimeformat show='datetime' date='monthdayyear' time='hourminute'/></field><run> by </run><field type='names' kind='editable' name='ImportedBy'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Records</run></par></tablecell>
+<tablecell><par def='1'><run>in file: </run><field type='number' kind='editable' name='RecordCount'><numberformat format='general' digits='0' punctuated='true' parens='false' percent='false'/></field><run>  cases created: </run><field type='number' kind='editable' name='CasesCreated'><numberformat format='general' digits='0' punctuated='true' parens='false' percent='false'/><code event='defaultvalue'><formula>0</formula></code></field><run>  lines: </run><field type='number' kind='editable' name='LinesCreated'><numberformat format='general' digits='0' punctuated='true' parens='false' percent='false'/></field><run>  requesters new/matched: </run><field type='number' kind='editable' name='RequestersCreated'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/></field><run>/</run><field type='number' kind='editable' name='RequestersMatched'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/></field><run>  rejected: </run><field type='number' kind='editable' name='RecordsRejected'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Checksum (trailer)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='TrailerChecksum'/><run> match: </run><field type='keyword' kind='editable' name='ChecksumMatch'><keywords ui='combobox'><textlist><text>Yes</text><text>No</text><text>N/A</text></textlist></keywords></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Import Log</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ImportLog' allowmultivalues='true' listdisplayseparator='newline' listinputseparators='newline'/></par></tablecell></tablerow>
+</table>
+<pardef id='2' hide='read edit print preview'/>
+<par def='2'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true'><code event='value'><formula>"[TACOM]":"[CSR]":"[Importer]":"[Admin]":"[ReadOnlyAudit]":"LocalDomainServers"</formula></code></field></par>
+<par def='2'><field type='text' kind='computed' name='FileKey'><code event='value'><formula>@UpperCase(FileName)</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+</form>

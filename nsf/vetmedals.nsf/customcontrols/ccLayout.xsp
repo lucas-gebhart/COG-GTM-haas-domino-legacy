@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom"
+	xmlns:xe="http://www.ibm.com/xsp/coreex" pageTitle="Veteran Medals &amp; Awards">
+	<!-- Shared page layout: Notes-blue header bar, left navigator, content area, footer.
+	     vetmedals.nsf copy of the heraldry.nsf control (copied in 2011 - not a shared design element; the two have drifted). -->
+	<xp:this.resources>
+		<xp:styleSheet href="/haas.css" />
+		<xp:styleSheet href="/xspLegacy.css" />
+		<xp:script src="/HAASCase.jss" clientSide="false" />
+	</xp:this.resources>
+	<xp:this.properties>
+		<xp:parameter name="xsp.theme" value="webstandard" />
+	</xp:this.properties>
+	<xc:this.designer>
+		<xc:designerExtension>
+			<xc:property name="pageName" type="string" required="false" />
+			<xc:property name="navSelection" type="string" required="false" defaultValue="home" />
+			<xc:property name="showNav" type="boolean" required="false" defaultValue="true" />
+		</xc:designerExtension>
+	</xc:this.designer>
+
+	<xp:table styleClass="haasFrame" cellpadding="0" cellspacing="0" border="0" style="width:100%">
+		<xp:tr>
+			<xp:td colspan="2" styleClass="haasHeader">
+				<xp:table border="0" cellpadding="2" cellspacing="0" style="width:100%">
+					<xp:tr>
+						<xp:td styleClass="haasHeaderTitle">
+							<xp:image url="/tacom_seal.gif" alt="TACOM" styleClass="haasSeal" />
+							<xp:text escape="true" value="Veteran Medals &amp; Awards" styleClass="haasAppName" />
+							<xp:text escape="true" value="#{javascript:compositeData.pageName}" styleClass="haasPageName" />
+						</xp:td>
+						<xp:td styleClass="haasHeaderUser">
+							<xp:text escape="true" value="#{javascript:@Name('[CN]', context.getUser().getDistinguishedName())}" />
+							<xp:text escape="true" value=" | " />
+							<xp:link text="Log Out" value="/names.nsf?Logout&amp;redirectto=/vetmedals.nsf/CasesByStage?OpenView" />
+						</xp:td>
+					</xp:tr>
+				</xp:table>
+			</xp:td>
+		</xp:tr>
+		<xp:tr>
+			<xp:td styleClass="haasNav" rendered="#{javascript:compositeData.showNav != false}">
+				<xp:panel styleClass="haasNavBox">
+					<xp:label value="Awards Cases" styleClass="haasNavHead" />
+					<xp:link text="Cases by Stage" value="/CasesByStage?OpenView" styleClass="#{javascript:compositeData.navSelection == 'cases' ? 'haasNavSel' : ''}" />
+					<xp:link text="Cases by Authorization Date" value="/CasesByAuthDate?OpenView" />
+					<xp:link text="Aging Cases (60/75 day)" value="/AgingCases?OpenView" />
+					<xp:link text="CSR Lookup" value="/CSRLookup.xsp" styleClass="#{javascript:compositeData.navSelection == 'lookup' ? 'haasNavSel' : ''}" />
+					<xp:label value="Fulfilment" styleClass="haasNavHead" />
+					<xp:link text="Engraving Queue" value="/EngravingQueue.xsp" styleClass="#{javascript:compositeData.navSelection == 'engraving' ? 'haasNavSel' : ''}" rendered="#{javascript:HAASCase.hasRole('[Engraver]') || HAASCase.hasRole('[TACOM]') || HAASCase.hasRole('[CSR]')}" />
+					<xp:link text="Assembly / QC Queue" value="/AssemblyQueue?OpenView" rendered="#{javascript:HAASCase.hasRole('[Assembler]') || HAASCase.hasRole('[TACOM]') || HAASCase.hasRole('[CSR]')}" />
+					<xp:link text="Warehouse Pick" value="/WarehousePick?OpenView" rendered="#{javascript:HAASCase.hasRole('[Warehouse]') || HAASCase.hasRole('[TACOM]') || HAASCase.hasRole('[CSR]')}" />
+					<xp:link text="Ship Confirm" value="/ShipConfirm?OpenView" rendered="#{javascript:HAASCase.hasRole('[Warehouse]') || HAASCase.hasRole('[TACOM]') || HAASCase.hasRole('[CSR]')}" />
+					<xp:label value="Import" styleClass="haasNavHead" rendered="#{javascript:HAASCase.hasRole('[Importer]') || HAASCase.hasRole('[Admin]')}" />
+					<xp:link text="Authorization Files" value="/($AuthFiles)?OpenView" rendered="#{javascript:HAASCase.hasRole('[Importer]') || HAASCase.hasRole('[Admin]')}" />
+					<xp:label value="Heraldry" styleClass="haasNavHead" />
+					<xp:link text="Heraldry Home" value="/heraldry.nsf/HeraldryHome.xsp" />
+				</xp:panel>
+			</xp:td>
+			<xp:td styleClass="haasContent">
+				<xc:ccStatusBanner />
+				<xp:callback facetName="content" id="content" />
+			</xp:td>
+		</xp:tr>
+		<xp:tr>
+			<xp:td colspan="2" styleClass="haasFooter">
+				<xp:text escape="true" value="U.S. Army TACOM ILSC Clothing &amp; Heraldry PSID | Veteran Medals &amp; Awards Case System | " />
+				<xp:text escape="true" value="#{javascript:'Server: ' + session.getServerName() + ' | DB: ' + database.getFilePath() + ' | Build 12.0.2FP2'}" />
+				<xp:br />
+				<xp:text escape="true" value="FOR OFFICIAL USE ONLY. This is a U.S. Government information system. Unauthorized use is prohibited." styleClass="haasFouo" />
+			</xp:td>
+		</xp:tr>
+	</xp:table>
+</xp:view>

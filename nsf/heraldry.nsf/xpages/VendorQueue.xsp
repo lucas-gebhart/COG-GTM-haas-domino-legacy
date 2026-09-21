@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom"
+	pageTitle="Vendor Work Queue">
+	<!-- VendorQueue.xsp?vendor=<CAGE>  - released / in-production requests for one vendor.
+	     The vendor parameter is whitelisted (5 alnum) and, for [Vendor]-only users, forced to their own CAGE code. -->
+	<xp:this.resources>
+		<xp:script src="/HAASStatus.jss" clientSide="false" />
+	</xp:this.resources>
+	<xp:this.beforePageLoad><![CDATA[#{javascript:
+var v = (param.vendor || "").toString().toUpperCase();
+if (v !== "" && !/^[A-Z0-9]{5}$/.test(v)) { sessionScope.haasError = "Invalid vendor key."; v = ""; }
+if (HAASStatus.hasRole("[Vendor]") && !HAASStatus.hasRole("[TACOM]")) {
+	// vendor users may only see their own queue; their CAGE code is the O= of their Notes name via the Vendor doc
+	var vw = database.getView("Vendors");
+	var ent = vw.getAllEntries().getFirstEntry();
+	while (ent !== null) {
+		var users = ent.getDocument().getItemValue("VendorUsers");
+		if (users.contains(context.getUser().getDistinguishedName())) { v = ent.getDocument().getItemValueString("VendorKey"); break; }
+		ent = vw.getAllEntries().getNextEntry(ent);
+	}
+}
+viewScope.vendorKey = v;}]]></xp:this.beforePageLoad>
+	<xp:this.data>
+		<xp:dominoView var="vwWork" viewName="OpenVendorWork" categoryFilter="#{javascript:viewScope.vendorKey}" />
+	</xp:this.data>
+	<xc:ccLayout pageName="Vendor Work Queue" navSelection="vendor">
+		<xp:this.facets>
+			<xp:panel xp:key="content">
+				<xp:label value="Open Vendor Work" styleClass="haasH1" />
+				<xp:panel styleClass="haasLookupBox" rendered="#{javascript:HAASStatus.hasRole('[TACOM]') || HAASStatus.hasRole('[DLA]') || HAASStatus.hasRole('[Admin]')}">
+					<xp:label value="Vendor (CAGE):" for="vendorSel" />
+					<xp:comboBox id="vendorSel" value="#{viewScope.vendorKey}" styleClass="haasSelect">
+						<xp:selectItem itemLabel="-- all vendors --" itemValue="" />
+						<xp:selectItems><xp:this.value><![CDATA[#{javascript:@DbColumn(@DbName(), "Vendors", 1)}]]></xp:this.value></xp:selectItems>
+					</xp:comboBox>
+					<xp:button value="Show" id="btnShow" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:context.redirectToPage("/VendorQueue.xsp?vendor=" + viewScope.vendorKey);}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+				</xp:panel>
+				<xp:viewPanel rows="30" id="vpWork" var="rowData" value="#{vwWork}" styleClass="haasView" showColumnHeader="true" pageName="/ModifyRequest.xsp">
+					<xp:viewColumn columnName="VendorKey"><xp:viewColumnHeader value="Vendor" /></xp:viewColumn>
+					<xp:viewColumn columnName="ReleasedDate"><xp:viewColumnHeader value="Released" /></xp:viewColumn>
+					<xp:viewColumn columnName="DocumentNumber" displayAs="link" openDocAsReadonly="true"><xp:viewColumnHeader value="Document Number" /></xp:viewColumn>
+					<xp:viewColumn columnName="UnitName"><xp:viewColumnHeader value="Unit" /></xp:viewColumn>
+					<xp:viewColumn columnName="RPD"><xp:viewColumnHeader value="RPD" /></xp:viewColumn>
+					<xp:viewColumn columnName="EstimatedShipDate"><xp:viewColumnHeader value="Est. Ship" /></xp:viewColumn>
+					<xp:viewColumn columnName="Status"><xp:viewColumnHeader value="Status" /></xp:viewColumn>
+					<xp:viewColumn columnName="DaysSinceRelease"><xp:viewColumnHeader value="Days" /></xp:viewColumn>
+				</xp:viewPanel>
+				<xp:text escape="true" styleClass="haasHelp" value="Vendors: use 'Mark In Production' and 'Mark Shipped' from the request document. Shipment confirmation requires a tracking number." />
+			</xp:panel>
+		</xp:this.facets>
+	</xc:ccLayout>
+</xp:view>

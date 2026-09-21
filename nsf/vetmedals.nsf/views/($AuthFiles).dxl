@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='($AuthFiles)' alias='AuthFiles' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='false' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='false' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='false'
+ nomenu='false' allowcustomizations='true'>
+<noteinfo noteid='16E' unid='0C1D2E3F4A5B6C7D85258A1F00305D71' sequence='43'>
+<created><datetime>20060412T093000,00-04</datetime></created>
+<modified><datetime>20200302T081940,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT Form = &quot;AuthorizationFile&quot;</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='New Authorization File' icon='5'><code event='hidewhen'><formula>!@IsMember(&quot;[Importer]&quot;:&quot;[Admin]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([Compose]; &quot;AuthorizationFile&quot;)</formula></code></action>
+<action title='Import Selected' icon='12'><code event='hidewhen'><formula>!@IsMember(&quot;[Importer]&quot;:&quot;[Admin]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;ImportAuthorizationFile&quot;)</formula></code></action>
+</actionbar>
+<column itemname='FileName' width='30' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='File'/>
+<code event='value'><formula>FileName</formula></code>
+</column>
+<column itemname='SourceAgency' width='6' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Agency'/>
+<code event='value'><formula>SourceAgency</formula></code>
+</column>
+<column itemname='TransmissionDate' width='10' resizable='true' sort='descending'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Transmitted'/>
+<code event='value'><formula>@Text(TransmissionDate; &quot;D0S0&quot;)</formula></code>
+</column>
+<column itemname='ImportStatus' width='20' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Status'/>
+<code event='value'><formula>ImportStatus</formula></code>
+</column>
+<column itemname='Counts' width='22' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Records / Cases / Lines / Rejected'/>
+<code event='value'><formula>@Text(RecordCount) + &quot; / &quot; + @Text(CasesCreated) + &quot; / &quot; + @Text(LinesCreated) + &quot; / &quot; + @Text(RecordsRejected)</formula></code>
+</column>
+<column itemname='ImportedBy' width='18' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Imported By'/>
+<code event='value'><formula>@Name([CN]; ImportedBy)</formula></code>
+</column>
+<item name='$Comment'><text>Hidden view of HRC/NPRC transmissions; the Agents menu in the harness reads it.</text></item>
+</view>

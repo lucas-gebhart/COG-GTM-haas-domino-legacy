@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='SESFlagRequest' alias='frmSESFlag|SESFlag' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ hide='notes' bgcolor='white' noreplace='false' renderpassthrough='true' recalconrefresh='true'>
+<noteinfo noteid='2A6' unid='9B3E1F7C2D4A4E6B85258A1F00305C22' sequence='58'>
+<created><datetime>20130611T090331,00-04</datetime></created>
+<modified><datetime>20220214T151049,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Renata Vasquez-Holm/OU=CHPSID/O=TACOM</name></updatedby>
+<globals><code event='options'><lotusscript>Option Public
+Option Declare
+Use "HAASCommon"
+Use "HAASMail"</lotusscript></code></globals>
+<code event='windowtitle'><formula>@If(@IsNewDoc; "New SES Flag Request"; "SES Flag " + SESFlagNumber + " - " + Status)</formula></code>
+<code event='querysave'><lotusscript>Sub Querysave(Source As Notesuidocument, Continue As Variant)
+	' SES flags are individually authorized; approval is captured on the document, not by agent.
+	Dim doc As NotesDocument
+	Set doc = Source.Document
+	If doc.GetItemValue("Status")(0) = "Approved" And doc.GetItemValue("ApprovedBy")(0) = "" Then
+		Dim s As New NotesSession
+		Call doc.ReplaceItemValue("ApprovedBy", s.UserName)
+		Call doc.ReplaceItemValue("ApprovalDate", Now)
+		Call SendSESApprovalMail(doc)
+	End If
+End Sub</lotusscript></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'><code event='hidewhen'><formula>@IsMember(Status; "Released to Vendor":"Shipped":"Complete":"Cancelled")</formula></code><code event='click'><formula>@Command([EditDocument])</formula></code></action>
+<action title='Approve' icon='23'>
+<code event='hidewhen'><formula>!@IsMember("[SESApprover]"; @UserRoles) | Status != "Submitted"</formula></code>
+<code event='click'><formula>@SetField("Status"; "Approved"); @Command([FileSave]); @Command([FileCloseWindow])</formula></code></action>
+<action title='Return for Correction' icon='81'>
+<code event='hidewhen'><formula>!@IsMember("[SESApprover]"; @UserRoles) | Status != "Submitted"</formula></code>
+<code event='click'><formula>@SetField("Status"; "Returned"); @SetField("ReturnReason"; @Prompt([OkCancelEdit]; "Return for Correction"; "Reason:"; "")); @Command([FileSave]); @Command([FileCloseWindow])</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='14pt' style='bold' name='Verdana' color='navy'/>Senior Executive Service Flag Request</run></par>
+<par def='1'><run><font size='8pt' name='Arial' color='gray'/>Distinct workflow from DD1348-6 unit requisitions. SES flags (AR 840-10, positional colors for Senior Executive Service members) are individually authorized by the SES approver role and are not released to a vendor until approved.</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>SES Flag Request Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computed' name='SESFlagNumber'>
+<code event='value'><formula>@If(SESFlagNumber != ""; SESFlagNumber; "SES-" + @Text(@Year(@Today)) + "-" + @Right("0000" + @Text(@DbLookup("Notes":"NoCache"; ""; "($Lookups)"; "NextSESSerial"; 2)); 4))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Status</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Status' allownew='true'>
+<keywords ui='combobox' columns='1' allownew='true'><textlist><text>Draft</text><text>Submitted</text><text>Returned</text><text>Approved</text><text>Released to Vendor</text><text>Shipped</text><text>Complete</text><text>Cancelled</text></textlist></keywords>
+<code event='defaultvalue'><formula>"Draft"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Executive Name</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ExecutiveName'>
+<code event='inputvalidation'><formula>@If(@Trim(ExecutiveName) = ""; @Failure("Executive name is required."); @Length(ExecutiveName) &gt; 80; @Failure("Executive name may not exceed 80 characters."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Executive Title / Position</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ExecutiveTitle'>
+<code event='inputvalidation'><formula>@If(@Trim(ExecutiveTitle) = ""; @Failure("Executive title is required."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>SES Tier</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='ExecutiveTier'>
+<keywords ui='radiobutton' columns='3'><textlist><text>Tier 1</text><text>Tier 2</text><text>Tier 3</text></textlist></keywords>
+<code event='inputvalidation'><formula>@If(!@IsMember(ExecutiveTier; "Tier 1":"Tier 2":"Tier 3"); @Failure("Select the SES tier."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Organization</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Organization'>
+<code event='inputvalidation'><formula>@If(@Trim(Organization) = ""; @Failure("Organization is required."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Flag Type</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='FlagType'>
+<keywords ui='combobox' columns='1'><textlist><text>SES Positional Color (Indoor)</text><text>SES Positional Color (Outdoor)</text><text>SES Automobile Flag</text><text>SES Desk Flag Set</text><text>Replacement Fringe/Cord</text></textlist></keywords>
+<code event='defaultvalue'><formula>"SES Positional Color (Indoor)"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Quantity</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='editable' name='Quantity'>
+<numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/>
+<code event='defaultvalue'><formula>1</formula></code>
+<code event='inputvalidation'><formula>@If(!@IsNumber(Quantity) | Quantity &lt; 1; @Failure("Quantity must be at least 1."); Quantity &gt; 2; @Failure("SES flag requests are limited to 2 per executive per request."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>DODAAC / UIC</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='DODAAC'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(DODAAC))</formula></code>
+<code event='inputvalidation'><formula>@If(@Length(DODAAC) != 6 | !@Matches(DODAAC; "{A-Z0-9}{A-Z0-9}{A-Z0-9}{A-Z0-9}{A-Z0-9}{A-Z0-9}"); @Failure("DODAAC must be 6 alphanumeric characters."); @Success)</formula></code></field><run> / </run>
+<field type='text' kind='editable' name='UIC'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(UIC))</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(UIC) = ""; @Success; !@Matches(UIC; "W{A-Z0-9}{A-Z0-9}{A-Z0-9}{A-Z0-9}{A-Z0-9}"); @Failure("UIC must be W followed by 5 alphanumeric characters."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Ship-To Address</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ShipToAddress' allowmultivalues='true' listinputseparators='newline' listdisplayseparator='newline'>
+<code event='inputvalidation'><formula>@If(@Trim(@Implode(ShipToAddress; " ")) = ""; @Failure("Ship-to address is required."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Justification</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Justification' description='New appointment, replacement, relocation'>
+<code event='inputvalidation'><formula>@If(@Trim(Justification) = ""; @Failure("Justification is required (new appointment, replacement, relocation)."); @Success)</formula></code></field></par></tablecell></tablerow>
+</table>
+<par def='1'><run><font size='11pt' style='bold' name='Verdana'/>Requester Point of Contact</run></par>
+<subformref name='sfRequesterPOC'/>
+<par def='1'><run><font size='11pt' style='bold' name='Verdana'/>Approval</run></par>
+<pardef id='2'><code event='hidewhen'><formula>!@IsMember("[SESApprover]":"[TACOM]":"[Admin]"; @UserRoles)</formula></code></pardef>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#e8eef8'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow><tablecell><par def='2'><run><font style='bold' size='9pt'/>Entered</run></par></tablecell>
+<tablecell><par def='2'><field type='datetime' kind='computedwhencomposed' name='EnteredDate'><code event='value'><formula>@Now</formula></code></field><run> by </run><field type='names' kind='computedwhencomposed' name='EnteredBy'><code event='value'><formula>@UserName</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='2'><run><font style='bold' size='9pt'/>Approved</run></par></tablecell>
+<tablecell><par def='2'><field type='datetime' kind='computed' name='ApprovalDate'><code event='value'><formula>@If(@IsAvailable(ApprovalDate); ApprovalDate; "")</formula></code></field><run> by </run><field type='names' kind='computed' name='ApprovedBy'><code event='value'><formula>@If(@IsAvailable(ApprovedBy); ApprovedBy; "")</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='2'><run><font style='bold' size='9pt'/>Return Reason</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='computed' name='ReturnReason'><code event='value'><formula>@If(@IsAvailable(ReturnReason); ReturnReason; "")</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='2'><run><font style='bold' size='9pt'/>Vendor / Released</run></par></tablecell>
+<tablecell><par def='2'><field type='keyword' kind='editable' name='VendorKey' allownew='true'><keywords ui='combobox' columns='1' allownew='true'><formula>@DbColumn("Notes":"NoCache"; ""; "Vendors"; 1)</formula></keywords></field><run> </run>
+<field type='datetime' kind='computed' name='ReleasedDate'><code event='value'><formula>@If(@IsAvailable(ReleasedDate); ReleasedDate; "")</formula></code></field></par></tablecell></tablerow>
+</table>
+<pardef id='3' hide='read edit print preview'/>
+<par def='3'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true'><code event='value'><formula>@Trim(@Unique("[TACOM]" : "[Admin]" : "[SESApprover]" : "[ReadOnlyAudit]" : "LocalDomainServers" : EnteredBy : @If(@Trim(VendorKey) != ""; "Vendor-" + VendorKey; "")))</formula></code></field></par>
+<par def='3'><field type='names' kind='computed' name='DocAuthors' authors='true' allowmultivalues='true'><code event='value'><formula>@Trim(@Unique("[TACOM]" : "[Admin]" : "[SESApprover]" : EnteredBy))</formula></code></field></par>
+<par def='3'><field type='text' kind='computed' name='StatusInquiryKey'><code event='value'><formula>@UpperCase(SESFlagNumber) + "|" + @UpperCase(DODAAC) + "|" + @UpperCase(UIC)</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+<item name='$Comment'><text>Added 2013 when SES flag ordering was separated from unit requisitions. Shares sfRequesterPOC and the Vendors lookup with Request.</text></item>
+</form>

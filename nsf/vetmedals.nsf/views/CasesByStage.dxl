@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='CasesByStage' alias='ByStage|vwStage' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='true' showinmenu='true' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='false' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='false'
+ nomenu='false' allowcustomizations='true' default='true'>
+<noteinfo noteid='142' unid='B1C2D3E4F5A6B7C885258A1F00305D71' sequence='26'>
+<created><datetime>20040305T090000,00-05</datetime></created>
+<modified><datetime>20230614T101816,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name></updatedby>
+<code event='selection'><formula>SELECT (Form = &quot;AwardsCase&quot; | Form = &quot;AwardLine&quot;) &amp; !@IsAvailable($Conflict) &amp; !@IsAvailable($Archived)</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='New Case (manual)' icon='5'><code event='hidewhen'><formula>!@IsMember(&quot;[CSR]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([Compose]; &quot;AwardsCase&quot;)</formula></code></action>
+<action title='Advance Selected' icon='14'><code event='hidewhen'><formula>!@IsMember(&quot;[CSR]&quot;:&quot;[Engraver]&quot;:&quot;[Assembler]&quot;:&quot;[Warehouse]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;(AdvanceStage)&quot;)</formula></code></action>
+<action title='Run NightlyAging' icon='12'><code event='hidewhen'><formula>!@IsMember(&quot;[Admin]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;NightlyAging&quot;)</formula></code></action>
+<action title='Expand All' icon='11'><code event='click'><formula>@Command([ViewExpandAll])</formula></code></action>
+<action title='Collapse All' icon='12'><code event='click'><formula>@Command([ViewCollapseAll])</formula></code></action>
+</actionbar>
+<column itemname='StageCategory' width='16' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Stage'/>
+<code event='value'><formula>@If(Form = &quot;AwardLine&quot;; &quot;&quot;; @Trim(Stage) = &quot;&quot;; &quot;(No Stage)&quot;; @Trim(Stage))</formula></code>
+</column>
+<column itemname='CaseNumber' width='16' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Case Number'/>
+<code event='value'><formula>@If(Form = &quot;AwardLine&quot;; &quot;    &quot; + LineKey; CaseNumber)</formula></code>
+</column>
+<column itemname='$3' width='40' resizable='true' responsesonly='true'>
+<font size='9pt' name='Arial' style='italic' color='gray'/>
+<columnheader title=''/>
+<code event='value'><formula>&quot;Line &quot; + @Text(LineNumber) + &quot;: &quot; + @Text(Quantity) + &quot; x &quot; + AwardName + @If(Engrave = &quot;Yes&quot;; &quot; (engrave: &quot; + EngravingText + &quot;)&quot;; &quot;&quot;) + &quot; [&quot; + LineStatus + &quot;]&quot;</formula></code>
+</column>
+<column itemname='Veteran' width='24' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Veteran'/>
+<code event='value'><formula>VeteranLastName + &quot;, &quot; + VeteranFirstName + @If(VeteranMI != &quot;&quot;; &quot; &quot; + VeteranMI; &quot;&quot;)</formula></code>
+</column>
+<column itemname='Source' width='7' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Source'/>
+<code event='value'><formula>Source</formula></code>
+</column>
+<column itemname='Priority' width='10' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Priority'/>
+<code event='value'><formula>@If(Priority = &quot;Routine&quot;; &quot;&quot;; Priority)</formula></code>
+</column>
+<column itemname='AuthorizationDate' width='10' resizable='true'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Authorized'/>
+<code event='value'><formula>@If(@IsTime(AuthorizationDate); @Text(AuthorizationDate; &quot;D0S0&quot;); @Text(AuthorizationDate))</formula></code>
+</column>
+<column itemname='EnteredDate' width='10' resizable='true' sort='descending'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Entered'/>
+<code event='value'><formula>@Text(EnteredDate; &quot;D0S0&quot;)</formula></code>
+</column>
+<column itemname='DaysOpen' width='5' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Days'/>
+<code event='value'><formula>@If(Form = &quot;AwardLine&quot;; &quot;&quot;; Stage = &quot;Closed&quot; &amp; @IsTime(ClosedDate); @Text(@Integer((ClosedDate - EnteredDate) / 86400)); @Text(@Integer((@Today - EnteredDate) / 86400)))</formula></code>
+</column>
+<column itemname='AgingFlag' width='8' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Aging'/>
+<code event='value'><formula>@If(AgingFlag = &quot;Red&quot;; &quot;!! RED&quot;; AgingFlag = &quot;Amber&quot;; &quot;! Amber&quot;; &quot;&quot;)</formula></code>
+</column>
+<column itemname='LineCount' width='5' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Lines'/>
+<code event='value'><formula>@If(Form = &quot;AwardLine&quot;; &quot;&quot;; @Text(LineCount))</formula></code>
+</column>
+<column itemname='AssignedCSR' width='18' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='CSR'/>
+<code event='value'><formula>@Name([CN]; AssignedCSR)</formula></code>
+</column>
+<item name='$Comment'><text>Default web launch view. Categorized on Stage; AwardLine responses shown under each case. Stage free-text is rarer than heraldry Status (keyword allownew=false since 2011) but &#x27;Assembly&#x27; vs &#x27;Assembly/QC&#x27; and &#x27;Closed &#x27; (trailing space) survive from before then.</text></item>
+</view>

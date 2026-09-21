@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='Vendor' alias='frmVendor' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ hide='notes' bgcolor='white' noreplace='false' renderpassthrough='true'>
+<noteinfo noteid='122' unid='6E1D4A9B3C7F4D2A85258A1F00305C22' sequence='27'>
+<created><datetime>20040315T083000,00-05</datetime></created>
+<modified><datetime>20180927T134510,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='windowtitle'><formula>"Vendor: " + VendorName + " (" + VendorKey + ")"</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'><code event='hidewhen'><formula>!@IsMember("[TACOM]":"[Admin]"; @UserRoles)</formula></code><code event='click'><formula>@Command([EditDocument])</formula></code></action>
+<action title='Open Vendor Work Queue' icon='6'><code event='click'><formula>@Command([OpenView]; "OpenVendorWork"; VendorKey)</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='14pt' style='bold' name='Verdana' color='navy'/>Heraldic Item Vendor / Manufacturer</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>CAGE Code (key)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='VendorKey'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(VendorKey))</formula></code>
+<code event='inputvalidation'><formula>@If(@Length(VendorKey) != 5 | !@Matches(VendorKey; "{0-9A-Z}{0-9A-Z}{0-9A-Z}{0-9A-Z}{0-9A-Z}"); @Failure("CAGE code must be 5 alphanumeric characters."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Vendor Name</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='VendorName'><code event='inputvalidation'><formula>@If(@Trim(VendorName) = ""; @Failure("Vendor name is required."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Address</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Address'/><run>, </run><field type='text' kind='editable' name='City'/><run>, </run><field type='text' kind='editable' name='State'/><run> </run><field type='text' kind='editable' name='ZIP'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Point of Contact</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='POC'/><run> </run><field type='text' kind='editable' name='Phone'/><run> </run><field type='text' kind='editable' name='Email'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Product Lines</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Products' allowmultivalues='true'>
+<keywords ui='checkbox' columns='2'><textlist><text>Guidon</text><text>Distinguishing Flag</text><text>Organizational Colors</text><text>Streamer</text><text>Positional Color</text><text>Automobile Flag</text><text>Insignia</text></textlist></keywords></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Contract Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ContractNumber' description='DLA Troop Support indefinite-delivery contract'>
+<code event='inputvalidation'><formula>@If(@Trim(ContractNumber) = ""; @Success; !@Begins(ContractNumber; "SPE"); @Failure("DLA Troop Support contract numbers begin with SPE."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Manufacturing Lead Time (days)</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='editable' name='LeadTimeDays'>
+<numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/>
+<code event='defaultvalue'><formula>30</formula></code>
+<code event='inputvalidation'><formula>@If(LeadTimeDays &lt; 15 | LeadTimeDays &gt; 60; @Failure("Lead time must be between 15 and 60 days per the contract."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Active</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Active'><keywords ui='radiobutton' columns='2'><textlist><text>Yes</text><text>No</text></textlist></keywords><code event='defaultvalue'><formula>"Yes"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Vendor Users (Notes names)</run></par></tablecell>
+<tablecell><par def='1'><field type='names' kind='editable' name='VendorUsers' allowmultivalues='true' listinputseparators='comma semicolon newline' listdisplayseparator='newline'/></par></tablecell></tablerow>
+</table>
+<pardef id='2' hide='read edit print preview'/>
+<par def='2'><field type='text' kind='computed' name='VendorGroup' description='Group name written into DocReaders on released requests'><code event='value'><formula>"Vendor-" + VendorKey</formula></code></field></par>
+<par def='2'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true'><code event='value'><formula>"[TACOM]" : "[DLA]" : "[Admin]" : "[ReadOnlyAudit]" : "LocalDomainServers" : VendorUsers</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+</form>

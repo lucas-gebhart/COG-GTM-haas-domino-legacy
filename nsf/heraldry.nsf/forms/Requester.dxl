@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='Requester' alias='frmRequester|UnitPOC' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ hide='notes' bgcolor='white' noreplace='false' renderpassthrough='true'>
+<noteinfo noteid='12A' unid='3D8E6C2A4B7F4E1C85258A1F00305C22' sequence='19'>
+<created><datetime>20040315T100000,00-05</datetime></created>
+<modified><datetime>20160222T111702,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='windowtitle'><formula>"Requester: " + Name</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'><code event='click'><formula>@Command([EditDocument])</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='14pt' style='bold' name='Verdana' color='navy'/>Unit Requester (S4 / Supply POC)</run></par>
+<par def='1'><run><font size='8pt' name='Arial' color='gray'/>Auto-created the first time an EAMS-A authenticated user submits a request; RequesterKey is the abbreviated Notes name. Duplicates arise when the same person authenticates under a new certificate name.</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Requester Key</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computedwhencomposed' name='RequesterKey'><code event='value'><formula>@If(@IsAvailable(RequesterKey); RequesterKey; @Name([Abbreviate]; @UserName))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Name</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Name'><code event='inputvalidation'><formula>@If(@Trim(Name) = ""; @Failure("Name is required."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Rank</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Rank'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>DODAAC / UIC</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='DODAAC'><code event='inputtranslation'><formula>@UpperCase(@Trim(DODAAC))</formula></code><code event='inputvalidation'><formula>@If(@Length(DODAAC) != 6; @Failure("DODAAC must be 6 characters."); @Success)</formula></code></field><run> / </run><field type='text' kind='editable' name='UIC'><code event='inputtranslation'><formula>@UpperCase(@Trim(UIC))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Unit</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='UnitName'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Duty Position</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Role' allownew='true'><keywords ui='combobox' columns='1' allownew='true'><textlist><text>S4</text><text>Supply Sergeant</text><text>Property Book Officer</text><text>Unit Commander</text><text>Executive Officer</text><text>Protocol Officer</text><text>Other</text></textlist></keywords></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Telephone</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Phone'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>E-mail</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Email'><code event='inputtranslation'><formula>@LowerCase(@Trim(Email))</formula></code><code event='inputvalidation'><formula>@If(@Trim(Email) != "" &amp; !@Contains(Email; "@"); @Failure("E-mail address is not valid."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Created</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='computedwhencomposed' name='CreatedDate'><code event='value'><formula>@Now</formula></code></field></par></tablecell></tablerow>
+</table>
+<pardef id='2' hide='read edit print preview'/>
+<par def='2'><field type='text' kind='computed' name='LookupKey'><code event='value'><formula>"RQ~" + RequesterKey</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+</form>

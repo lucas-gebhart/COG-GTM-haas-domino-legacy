@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE acl SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<acl xmlns='http://www.lotus.com/dxl' version='12.0' consistentacl='true' maxinternetaccess='editor'
+ adminserver='CN=HAAS-APP01/O=TACOM' adminnames='false' adminreaderauthor='false' uniformaccess='true'>
+<!--
+  vetmedals.nsf ACL. No Anonymous access at all: every document carries veteran /
+  next-of-kin PII (synthetic in this export). Production-floor roles map to the
+  fulfilment stages: [CSR] -> Authorized/Review, [Engraver] -> Engraving,
+  [Assembler] -> Assembly/QC, [Warehouse] -> Warehouse pick + Ship.
+  The [Vendor] and [DLA] roles exist for ACL parity with heraldry.nsf but are unused.
+-->
+<role name='[TACOM]'/>
+<role name='[DLA]'/>
+<role name='[Vendor]'/>
+<role name='[CSR]'/>
+<role name='[Engraver]'/>
+<role name='[Assembler]'/>
+<role name='[Warehouse]'/>
+<role name='[Admin]'/>
+<role name='[ReadOnlyAudit]'/>
+<role name='[Importer]'/>
+
+<aclentry name='-Default-' type='unspecified' level='noaccess' nodelete='true' publicreader='false' publicwriter='false'/>
+<aclentry name='Anonymous' type='unspecified' level='noaccess' nodelete='true' publicreader='false' publicwriter='false'/>
+<aclentry name='LocalDomainServers' type='servergroup' level='manager' publicreader='true' publicwriter='true'>
+<role name='[Admin]'/><role name='[TACOM]'/><role name='[CSR]'/><role name='[Engraver]'/><role name='[Assembler]'/><role name='[Warehouse]'/><role name='[Importer]'/>
+</aclentry>
+<aclentry name='OtherDomainServers' type='servergroup' level='noaccess'/>
+<aclentry name='CN=HAAS-APP01/O=TACOM' type='server' level='manager' publicreader='true' publicwriter='true'>
+<role name='[Admin]'/><role name='[TACOM]'/><role name='[CSR]'/><role name='[Engraver]'/><role name='[Assembler]'/><role name='[Warehouse]'/><role name='[Importer]'/>
+</aclentry>
+<aclentry name='CN=HAAS-MAIL01/O=TACOM' type='server' level='editor' nodelete='true'/>
+<aclentry name='CN=HAAS Signer/O=HAAS' type='person' level='designer' nodelete='true'><role name='[Admin]'/></aclentry>
+<aclentry name='CN=HRC-Transfer/OU=Agents/O=TACOM' type='person' level='editor' nodelete='true' publicreader='true' publicwriter='true'>
+<!-- Signer ID used by the file-drop watcher that runs ImportAuthorizationFile when HRC/NPRC files land in the transfer share. -->
+<role name='[Importer]'/>
+</aclentry>
+
+<aclentry name='HAAS-Administrators' type='persongroup' level='manager' publicreader='true' publicwriter='true'>
+<role name='[Admin]'/><role name='[TACOM]'/><role name='[CSR]'/><role name='[Importer]'/>
+</aclentry>
+<aclentry name='TACOM-CHPSID-Staff' type='persongroup' level='editor' nodelete='true' publicreader='true' publicwriter='true'>
+<role name='[TACOM]'/><role name='[CSR]'/>
+</aclentry>
+<aclentry name='TACOM-CHPSID-Awards-CSR' type='persongroup' level='editor' nodelete='true' publicreader='true' publicwriter='true'>
+<role name='[TACOM]'/><role name='[CSR]'/>
+</aclentry>
+<aclentry name='TACOM-CHPSID-Engraving' type='persongroup' level='author' nodelete='true' createdocs='true' publicreader='true' publicwriter='false'>
+<role name='[Engraver]'/>
+</aclentry>
+<aclentry name='TACOM-CHPSID-Assembly' type='persongroup' level='author' nodelete='true' createdocs='false' publicreader='true' publicwriter='false'>
+<role name='[Assembler]'/>
+</aclentry>
+<aclentry name='TACOM-CHPSID-Warehouse' type='persongroup' level='author' nodelete='true' createdocs='true' publicreader='true' publicwriter='false'>
+<role name='[Warehouse]'/>
+</aclentry>
+<aclentry name='HAAS-Auditors' type='persongroup' level='reader' nodelete='true' publicreader='true' publicwriter='false'>
+<role name='[ReadOnlyAudit]'/>
+</aclentry>
+
+<!-- Per-user entries (synthetic names) -->
+<aclentry name='CN=Marlene Okafor/OU=CHPSID/O=TACOM' type='person' level='manager' publicreader='true' publicwriter='true'>
+<role name='[Admin]'/><role name='[TACOM]'/><role name='[CSR]'/><role name='[Importer]'/>
+</aclentry>
+<aclentry name='CN=Dwayne Petrakis/OU=CHPSID/O=TACOM' type='person' level='editor' nodelete='true' publicreader='true' publicwriter='true'>
+<role name='[TACOM]'/><role name='[CSR]'/>
+</aclentry>
+<aclentry name='CN=Lorraine Whitcombe/OU=CHPSID/O=TACOM' type='person' level='editor' nodelete='true' publicreader='true' publicwriter='true'>
+<role name='[TACOM]'/><role name='[CSR]'/><role name='[Importer]'/>
+</aclentry>
+<aclentry name='CN=Hector Amundsen/OU=CHPSID/O=TACOM' type='person' level='author' nodelete='true' createdocs='true' publicreader='true'>
+<role name='[Engraver]'/>
+</aclentry>
+<aclentry name='CN=Benedetta Kowalczyk/OU=CHPSID/O=TACOM' type='person' level='author' nodelete='true' createdocs='false' publicreader='true'>
+<role name='[Assembler]'/>
+</aclentry>
+<aclentry name='CN=Oswaldo Ferreira-Lund/OU=CHPSID/O=TACOM' type='person' level='author' nodelete='true' createdocs='true' publicreader='true'>
+<role name='[Warehouse]'/>
+</aclentry>
+<aclentry name='CN=Domino Developer/O=HAAS' type='person' level='designer' publicreader='true' publicwriter='true'><role name='[Admin]'/></aclentry>
+<aclentry name='CN=Ret Hamlin/OU=CHPSID/O=TACOM' type='person' level='editor' nodelete='true' publicreader='true' publicwriter='true'>
+<!-- User separated 2019; entry never removed. -->
+<role name='[TACOM]'/><role name='[CSR]'/>
+</aclentry>
+
+<logentry><text>02/18/2004 09:45:11 AM CN=Domino Developer/O=HAAS updated -Default-</text></logentry>
+<logentry><text>09/02/2011 02:52:07 PM CN=Marlene Okafor/OU=CHPSID/O=TACOM added TACOM-CHPSID-Awards-CSR</text></logentry>
+<logentry><text>04/14/2015 10:20:33 AM CN=Marlene Okafor/OU=CHPSID/O=TACOM added role [Importer]</text></logentry>
+<logentry><text>04/14/2015 10:21:02 AM CN=Marlene Okafor/OU=CHPSID/O=TACOM added CN=HRC-Transfer/OU=Agents/O=TACOM</text></logentry>
+<logentry><text>10/30/2019 04:56:12 PM CN=Marlene Okafor/OU=CHPSID/O=TACOM added HAAS-Auditors</text></logentry>
+<logentry><text>11/18/2024 10:12:10 AM CN=HAAS-APP01/O=TACOM updated Anonymous</text></logentry>
+</acl>

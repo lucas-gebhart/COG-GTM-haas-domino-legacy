@@ -1,0 +1,148 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+'   Agent: ReleaseToVendor
+'   Trigger: manual, from the action menu (view selection) or via ?OpenAgent from ModifyRequest.xsp
+'   Purpose: release approved DD1348-6 requests to the assigned vendor. Once released the request is locked
+'            (Status = "Released to Vendor", ReleasedDate set, DocAuthors narrowed) and the vendor is notified.
+Option Public
+Option Declare
+Use "HAASCommon"
+Use "HAASMail"
+
+'++LotusScript Development Environment:2:5:(Declarations):0:10
+Dim gSession As NotesSession
+Dim gDb As NotesDatabase
+Dim gVendorView As NotesView
+
+'++LotusScript Development Environment:2:2:Initialize:1:10
+Sub Initialize
+	On Error GoTo ErrHandler
+	Dim agent As NotesAgent
+	Dim col As NotesDocumentCollection
+	Dim doc As NotesDocument
+	Dim released As Integer, skipped As Integer
+	Dim reason As String
+
+	Set gSession = New NotesSession
+	Set gDb = gSession.CurrentDatabase
+	Set agent = gSession.CurrentAgent
+	Set gVendorView = gDb.GetView("Vendors")
+
+	' Web invocation passes the UNID as the agent parameter (?OpenAgent&unid=...), Notes client uses the view selection.
+	If gSession.IsOnServer And agent.ParameterDocID <> "" Then
+		Set doc = gDb.GetDocumentByID(agent.ParameterDocID)
+		If Not doc Is Nothing Then
+			If ReleaseOne(doc, reason) Then released = 1 Else skipped = 1
+		End If
+	Else
+		Set col = gDb.UnprocessedDocuments
+		Set doc = col.GetFirstDocument
+		While Not doc Is Nothing
+			If ReleaseOne(doc, reason) Then
+				released = released + 1
+			Else
+				skipped = skipped + 1
+				Call LogAgent("ReleaseToVendor", "Skipped " & SafeGetText(doc, "DocumentNumber") & ": " & reason)
+			End If
+			Set doc = col.GetNextDocument(doc)
+		Wend
+	End If
+	Call LogAgent("ReleaseToVendor", "Released " & released & ", skipped " & skipped & " by " & gSession.EffectiveUserName)
+	If Not gSession.IsOnServer Then
+		Msgbox "Released " & released & " request(s); " & skipped & " skipped (see log).", 64, APP_TITLE
+	End If
+	Exit Sub
+ErrHandler:
+	Call LogAgent("ReleaseToVendor", "Error " & Err & " at line " & Erl & ": " & Error$)
+	Exit Sub
+End Sub
+
+'++LotusScript Development Environment:2:1:ReleaseOne:1:8
+Function ReleaseOne(doc As NotesDocument, reason As String) As Boolean
+	On Error GoTo ErrHandler
+	Dim vendorDoc As NotesDocument
+	Dim vendorKey As String
+	Dim leadDays As Integer
+	Dim est As NotesDateTime
+	Dim lines As NotesDocumentCollection
+	Dim line As NotesDocument
+	Dim oldStatus As String
+	Dim readers As Variant
+
+	ReleaseOne = False
+	If SafeGetText(doc, "Form") <> "Request" Then
+		reason = "not a Request document"
+		Exit Function
+	End If
+	If IsReleased(doc) Then
+		reason = "already released / closed"
+		Exit Function
+	End If
+	oldStatus = NormalizeStatus(SafeGetText(doc, "Status"))
+	If oldStatus <> STATUS_APPROVED And oldStatus <> STATUS_REVIEW And oldStatus <> STATUS_SUBMITTED Then
+		reason = "status is " & oldStatus & "; must be Submitted, Under Review or Approved"
+		Exit Function
+	End If
+	vendorKey = UCase(Trim(SafeGetText(doc, "VendorKey")))
+	If vendorKey = "" Then
+		reason = "no vendor assigned"
+		Exit Function
+	End If
+	Set vendorDoc = gVendorView.GetDocumentByKey(vendorKey, True)
+	If vendorDoc Is Nothing Then
+		' Vendor record deleted but still referenced - proceed (legacy behaviour), warn in log.
+		Call LogAgent("ReleaseToVendor", "WARNING vendor " & vendorKey & " has no Vendor document; releasing anyway")
+		leadDays = 30
+	Else
+		If UCase(SafeGetText(vendorDoc, "Active")) = "NO" Then
+			reason = "vendor " & vendorKey & " is inactive"
+			Exit Function
+		End If
+		leadDays = CInt(vendorDoc.GetItemValue("LeadTimeDays")(0))
+		Call doc.ReplaceItemValue("VendorName", vendorDoc.GetItemValue("VendorName"))
+	End If
+	If doc.Responses.Count = 0 Then
+		reason = "request has no line items"
+		Exit Function
+	End If
+
+	Set est = New NotesDateTime(Now)
+	Call est.AdjustDay(leadDays)
+
+	Call doc.ReplaceItemValue("Status", STATUS_RELEASED)
+	Call doc.ReplaceItemValue("ReleasedDate", Now)
+	Call doc.ReplaceItemValue("ReleasedBy", gSession.EffectiveUserName)
+	Call doc.ReplaceItemValue("EstimatedShipDate", est)
+	Call doc.ReplaceItemValue("LockedForModification", "1")
+	Call AppendStatusHistory(doc, oldStatus, STATUS_RELEASED, gSession.CommonUserName)
+
+	' Narrow authors: requester loses edit rights; vendor group gains read via DocReaders (recomputed by form on next edit,
+	' so we set it explicitly here because agents do not run form formulas).
+	readers = Evaluate({@Trim(@Unique("[TACOM]":"[DLA]":"[Admin]":"[ReadOnlyAudit]":"LocalDomainServers":EnteredBy:"Vendor-" + VendorKey))}, doc)
+	Call doc.ReplaceItemValue("DocReaders", readers)
+	Call doc.ReplaceItemValue("DocAuthors", Evaluate({"[TACOM]":"[Admin]":"Vendor-" + VendorKey}, doc))
+	doc.GetFirstItem("DocReaders").IsReaders = True
+	doc.GetFirstItem("DocAuthors").IsAuthors = True
+
+	Set lines = doc.Responses
+	Set line = lines.GetFirstDocument
+	While Not line Is Nothing
+		If NormalizeStatus(SafeGetText(line, "LineStatus")) <> STATUS_CANCELLED Then
+			Call line.ReplaceItemValue("LineStatus", STATUS_RELEASED)
+			Call line.ReplaceItemValue("VendorKey", vendorKey)
+			Call line.Save(True, False)
+		End If
+		Set line = lines.GetNextDocument(line)
+	Wend
+
+	If doc.Save(True, False) Then
+		Call SendStatusNotification(doc, STATUS_RELEASED)
+		Call SendVendorRelease(doc, vendorDoc)
+		ReleaseOne = True
+	Else
+		reason = "save failed"
+	End If
+	Exit Function
+ErrHandler:
+	reason = "Error " & Err & ": " & Error$
+	Exit Function
+End Function

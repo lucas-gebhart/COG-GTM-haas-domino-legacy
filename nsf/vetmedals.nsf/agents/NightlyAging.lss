@@ -1,0 +1,150 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+' Agent: NightlyAging
+' Trigger: scheduled daily 02:00 on HAAS-APP01; also runnable from the Actions menu / Profile form.
+'
+' For every open AwardsCase (Stage not Closed/Cancelled) compute days since EnteredDate and set
+' AgingFlag = "" | "Amber" (> Profile.AgingAmberDays, default 60) | "Red" (> Profile.AgingRedDays, default 75).
+' The AgingCases view selects on AgingFlag != "", so this agent is what populates it.
+' Also computes DaysInStage from the current stage-date item and mails a summary to Profile.AgingReportTo.
+Option Public
+Option Declare
+Use "HAASCommon"
+Use "HAASAwards"
+
+'++LotusScript Development Environment:2:5:(Declarations):0:10
+Const AGENT_NAME = "NightlyAging"
+
+'++LotusScript Development Environment:2:2:Initialize:1:10
+Sub Initialize
+	Dim s As NotesSession
+	Dim db As NotesDatabase
+	Dim coll As NotesDocumentCollection
+	Dim doc As NotesDocument
+	Dim entered As Variant
+	Dim stageDate As Variant
+	Dim daysOpen As Long, daysInStage As Long
+	Dim amberDays As Long, redDays As Long
+	Dim oldFlag As String, newFlag As String
+	Dim nAmber As Long, nRed As Long, nCleared As Long, nChanged As Long, nProcessed As Long, nBadDate As Long
+	Dim redList() As String
+	Dim nRedList As Integer
+	Dim started As Single
+	On Error GoTo ErrHandler
+
+	started = Timer
+	Set s = New NotesSession
+	Set db = s.CurrentDatabase
+	amberDays = GetProfileNumber(db, "AgingAmberDays", AGING_AMBER_DEFAULT)
+	redDays = GetProfileNumber(db, "AgingRedDays", AGING_RED_DEFAULT)
+	Call LogAgent(AGENT_NAME, "Start - thresholds amber>" & amberDays & " red>" & redDays)
+
+	' Full-text is NOT enabled on this database (see database.properties), so db.Search is a linear scan.
+	' On the production replica this takes ~4 minutes for 3,000 cases - hence the 02:00 schedule.
+	Set coll = db.Search({Form = "AwardsCase" & Stage != "Closed" & Stage != "Cancelled" & !@IsAvailable($Archived)}, Nothing, 0)
+	nRedList = 0
+	Set doc = coll.GetFirstDocument
+	Do Until doc Is Nothing
+		nProcessed = nProcessed + 1
+		entered = SafeGetDate(doc, "EnteredDate")
+		If IsNull(entered) Then
+			entered = SafeGetDate(doc, "AuthorizationDate")
+			nBadDate = nBadDate + 1
+		End If
+		If IsNull(entered) Then
+			daysOpen = -1
+		Else
+			daysOpen = DaysBetween(entered, Today)
+		End If
+		oldFlag = SafeGetText(doc, "AgingFlag")
+		If daysOpen < 0 Then
+			newFlag = oldFlag   ' cannot evaluate; leave as-is
+		Else
+			newFlag = ComputeAgingFlag(daysOpen, amberDays, redDays)
+		End If
+
+		' On Hold cases keep aging (the customer is still waiting) but are reported separately.
+		stageDate = SafeGetDate(doc, "StageDate")
+		If IsNull(stageDate) Then stageDate = entered
+		If IsNull(stageDate) Then daysInStage = -1 Else daysInStage = DaysBetween(stageDate, Today)
+
+		Call doc.ReplaceItemValue("DaysOpen", daysOpen)
+		Call doc.ReplaceItemValue("DaysInStage", daysInStage)
+		Call doc.ReplaceItemValue("AgingLastEval", Now)
+		If newFlag <> oldFlag Then
+			Call doc.ReplaceItemValue("AgingFlag", newFlag)
+			Call AppendStatusHistory(doc, "AgingFlag=" & IIf(oldFlag = "", "(none)", oldFlag), "AgingFlag=" & IIf(newFlag = "", "(none)", newFlag), AGENT_NAME)
+			nChanged = nChanged + 1
+		End If
+		Select Case newFlag
+		Case "Red"
+			nRed = nRed + 1
+			If nRedList < 200 Then
+				ReDim Preserve redList(nRedList)
+				redList(nRedList) = SafeGetText(doc, "CaseNumber") & "  " & daysOpen & "d  " & SafeGetText(doc, "Stage") & "  " & SafeGetText(doc, "VeteranLastName") & ", " & SafeGetText(doc, "VeteranFirstName")
+				nRedList = nRedList + 1
+			End If
+		Case "Amber"
+			nAmber = nAmber + 1
+		Case Else
+			If oldFlag <> "" Then nCleared = nCleared + 1
+		End Select
+		' Save without updating $UpdatedBy/$Revisions history noise? No - legacy code saves normally,
+		' which is why $UpdatedBy on every open case contains the agent signer (wart #11).
+		Call doc.Save(True, False)
+		Set doc = coll.GetNextDocument(doc)
+	Loop
+
+	Call StampAgentRun(db, "AgingLastRun")
+	Call LogAgent(AGENT_NAME, "Done - processed " & nProcessed & ", amber " & nAmber & ", red " & nRed & ", cleared " & nCleared & ", changed " & nChanged & ", unparseable dates " & nBadDate & ", " & Format$(Timer - started, "0.0") & "s")
+	If nRed > 0 Or nAmber > 0 Then Call SendAgingReport(db, nProcessed, nAmber, nRed, redList, nRedList, amberDays, redDays)
+	Exit Sub
+ErrHandler:
+	Call LogAgent(AGENT_NAME, "Error " & Err & ": " & Error$ & " at line " & Erl & " (doc " & IIf(doc Is Nothing, "n/a", doc.UniversalID) & ")")
+	Resume Next
+End Sub
+
+'++LotusScript Development Environment:2:2:SendAgingReport:1:8
+Sub SendAgingReport(db As NotesDatabase, nProcessed As Long, nAmber As Long, nRed As Long, redList() As String, nRedList As Integer, amberDays As Long, redDays As Long)
+	Dim memo As NotesDocument
+	Dim rt As NotesRichTextItem
+	Dim style As NotesRichTextStyle
+	Dim s As New NotesSession
+	Dim i As Integer
+	On Error GoTo ErrHandler
+	Set memo = db.CreateDocument
+	Call memo.ReplaceItemValue("Form", "Memo")
+	Call memo.ReplaceItemValue("SendTo", GetProfileValue(db, "AgingReportTo"))
+	Call memo.ReplaceItemValue("From", GetProfileText(db, "MailFrom", s.UserName))
+	Call memo.ReplaceItemValue("Principal", GetProfileText(db, "MailFrom", s.UserName))
+	Call memo.ReplaceItemValue("Subject", "HAAS Awards aging report " & Format$(Today, "mm/dd/yyyy") & " - " & nRed & " red, " & nAmber & " amber")
+	Set rt = memo.CreateRichTextItem("Body")
+	Set style = s.CreateRichTextStyle
+	style.Bold = True
+	Call rt.AppendStyle(style)
+	Call rt.AppendText("Veteran Medals & Awards - nightly aging report")
+	style.Bold = False
+	Call rt.AppendStyle(style)
+	Call rt.AddNewLine(2)
+	Call rt.AppendText("Open cases evaluated: " & nProcessed)
+	Call rt.AddNewLine(1)
+	Call rt.AppendText("AMBER (over " & amberDays & " days): " & nAmber)
+	Call rt.AddNewLine(1)
+	Call rt.AppendText("RED   (over " & redDays & " days): " & nRed)
+	Call rt.AddNewLine(2)
+	If nRedList > 0 Then
+		Call rt.AppendText("Red cases (first " & nRedList & "):")
+		Call rt.AddNewLine(1)
+		For i = 0 To nRedList - 1
+			Call rt.AppendText("   " & redList(i))
+			Call rt.AddNewLine(1)
+		Next
+	End If
+	Call rt.AddNewLine(1)
+	Call rt.AppendText("Open the AgingCases view: ")
+	Call rt.AppendDocLink(db.GetView("AgingCases"), "AgingCases")
+	Call memo.Send(False)
+	Exit Sub
+ErrHandler:
+	Call LogAgent(AGENT_NAME, "Could not send aging report: " & Error$)
+	Exit Sub
+End Sub

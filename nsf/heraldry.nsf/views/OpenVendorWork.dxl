@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='OpenVendorWork' alias='VendorWork|vwVendor' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='true' showinmenu='true' onopengoto='lastopened' headers='beveled' opencollapsed='false'
+ bgcolor='white' altrowcolor='#fff8e8' headerbgcolor='#c0c0c0' rowlinecount='1' headerlinecount='1'>
+<noteinfo noteid='146' unid='D4E5F6A7B8C9D0E185258A1F00305C22' sequence='48'>
+<created><datetime>20070502T110000,00-04</datetime></created>
+<modified><datetime>20230817T143122,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name></updatedby>
+<code event='selection'><formula>SELECT (Form = "Request" | Form = "RequestLine") &amp; @Trim(VendorKey) != "" &amp; @IsMember(@Trim(Status); "Released to Vendor":"In Production") &amp; !@IsAvailable($Conflict)</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Mark In Production' icon='50'><code event='hidewhen'><formula>!@IsMember("[Vendor]":"[TACOM]"; @UserRoles)</formula></code>
+<code event='click'><formula>@If(Status = "Released to Vendor"; @Do(@SetField("Status"; "In Production"); @SetField("StatusHistory"; StatusHistory : (@Text(@Now; "D0S1") + " Released to Vendor -> In Production by " + @Name([Abbreviate]; @UserName))); @Command([FileSave])); @Prompt([Ok]; "Heraldry Automation System"; "Only requests in status 'Released to Vendor' can be marked In Production."))</formula></code></action>
+<action title='Mark Shipped' icon='89'><code event='hidewhen'><formula>!@IsMember("[Vendor]":"[TACOM]"; @UserRoles)</formula></code>
+<code event='click'><formula>@Command([ToolsRunMacro]; "(VendorMarkShipped)")</formula></code></action>
+</actionbar>
+<column itemname='VendorKey' width='24' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Vendor'/>
+<code event='value'><formula>@If(Form = "RequestLine"; ""; VendorKey + " - " + @If(@Trim(VendorName) = ""; "(vendor record missing)"; VendorName))</formula></code>
+</column>
+<column itemname='ReleasedDate' width='10' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Released'/>
+<code event='value'><formula>@If(Form = "RequestLine"; ""; @Text(ReleasedDate; "D0S0"))</formula></code>
+</column>
+<column itemname='DocumentNumber' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Document Number'/>
+<code event='value'><formula>@If(Form = "RequestLine"; "    " + LineDocNumber; DocumentNumber)</formula></code>
+</column>
+<column itemname='$5' width='34' resizable='true' responsesonly='true'>
+<font size='9pt' name='Arial' style='italic'/>
+<columnheader title=''/>
+<code event='value'><formula>@Text(Quantity) + " " + UnitOfIssue + " " + ItemDescription + @If(@Trim(ExceptionData) != ""; " - " + ExceptionData; "")</formula></code>
+</column>
+<column itemname='UnitName' width='26' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Unit'/>
+<code event='value'><formula>UnitName</formula></code>
+</column>
+<column itemname='RPD' width='5' resizable='true' align='center'>
+<font size='9pt' name='Arial'/>
+<columnheader title='RPD'/>
+<code event='value'><formula>RPD</formula></code>
+</column>
+<column itemname='EstimatedShipDate' width='10' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Est. Ship'/>
+<code event='value'><formula>@If(Form = "RequestLine"; ""; @Text(EstimatedShipDate; "D0S0"))</formula></code>
+</column>
+<column itemname='Status' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Status'/>
+<code event='value'><formula>@If(Form = "RequestLine"; LineStatus; Status)</formula></code>
+</column>
+<column itemname='DaysSinceRelease' width='6' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Days'/>
+<code event='value'><formula>@If(Form = "RequestLine" | @Text(ReleasedDate) = ""; ""; @Text(@Integer((@Today - ReleasedDate) / 86400)))</formula></code>
+</column>
+<item name='$Comment'><text>Vendor work queue. Readers field DocReaders ("Vendor-" + CAGE) restricts each vendor to its own category; TACOM/DLA see all. Category rows for vendors with a missing Vendor document render "(vendor record missing)".</text></item>
+</view>

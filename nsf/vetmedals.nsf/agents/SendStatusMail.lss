@@ -1,0 +1,101 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+' Agent: SendStatusMail (vetmedals.nsf)
+' Trigger: after documents are created or modified (scheduled 'newmodified', every 30 min).
+' When a case's Stage changed since the last notification (Stage <> LastNotifiedStage) and the
+' requester has an e-mail address on the Requester document, send a plain-language status note.
+' Veterans/NOK are external: the memo goes out via the SMTP relay in Profile.MailFrom's domain.
+Option Public
+Option Declare
+Use "HAASCommon"
+
+Const AGENT_NAME = "SendStatusMail"
+
+'++LotusScript Development Environment:2:2:Initialize:1:10
+Sub Initialize
+	Dim s As NotesSession
+	Dim db As NotesDatabase
+	Dim coll As NotesDocumentCollection
+	Dim doc As NotesDocument
+	Dim reqDoc As NotesDocument
+	Dim v As NotesView
+	Dim stage As String
+	Dim email As String
+	Dim nSent As Long, nSkipped As Long
+	On Error GoTo ErrHandler
+	Set s = New NotesSession
+	Set db = s.CurrentDatabase
+	If GetProfileText(db, "MailEnabled", "Yes") <> "Yes" Then
+		Call LogAgent(AGENT_NAME, "Mail disabled in Profile - nothing sent")
+		Exit Sub
+	End If
+	Set v = db.GetView("CSRLookup")
+	Set coll = db.UnprocessedDocuments
+	Set doc = coll.GetFirstDocument
+	Do Until doc Is Nothing
+		If SafeGetText(doc, "Form") = "AwardsCase" Then
+			stage = SafeGetText(doc, "Stage")
+			If stage <> SafeGetText(doc, "LastNotifiedStage") And stage <> "" Then
+				Set reqDoc = v.GetDocumentByKey(SafeGetText(doc, "RequesterKey"), True)
+				email = ""
+				If Not reqDoc Is Nothing Then email = SafeGetText(reqDoc, "Email")
+				If email <> "" And InStr(email, "@") > 1 Then
+					Call SendOne(db, doc, email, stage)
+					nSent = nSent + 1
+				Else
+					nSkipped = nSkipped + 1
+				End If
+				Call doc.ReplaceItemValue("LastNotifiedStage", stage)
+				Call doc.ReplaceItemValue("LastNotifiedDate", Now)
+				Call doc.Save(True, False)
+			End If
+		End If
+		Call s.UpdateProcessedDoc(doc)
+		Set doc = coll.GetNextDocument(doc)
+	Loop
+	Call LogAgent(AGENT_NAME, "Sent " & nSent & ", skipped (no e-mail) " & nSkipped)
+	Exit Sub
+ErrHandler:
+	Call LogAgent(AGENT_NAME, "Error " & Err & ": " & Error$ & " at line " & Erl)
+	Resume Next
+End Sub
+
+'++LotusScript Development Environment:2:2:SendOne:1:8
+Sub SendOne(db As NotesDatabase, caseDoc As NotesDocument, email As String, stage As String)
+	Dim memo As NotesDocument
+	Dim rt As NotesRichTextItem
+	Dim body As String
+	On Error GoTo ErrHandler
+	Select Case stage
+	Case "Authorized": body = "Your awards case has been received from the authorizing agency and entered into our system."
+	Case "Engraving": body = "Your decoration(s) are being engraved."
+	Case "Assembly/QC": body = "Your awards are being assembled and inspected."
+	Case "Warehouse": body = "Your awards have passed inspection and are being prepared for shipment."
+	Case "Shipped": body = "Your awards have shipped. Tracking number: " & SafeGetText(caseDoc, "TrackingNumber") & "."
+	Case "Closed": body = "Your awards case is complete. Thank you for your service."
+	Case "On Hold": body = "Your awards case is on hold: " & SafeGetText(caseDoc, "HoldReason") & ". A customer service representative will contact you."
+	Case Else: body = "Your awards case status is now: " & stage & "."
+	End Select
+	Set memo = db.CreateDocument
+	Call memo.ReplaceItemValue("Form", "Memo")
+	Call memo.ReplaceItemValue("SendTo", email)
+	Call memo.ReplaceItemValue("From", GetProfileText(db, "MailFrom", "usarmy.tacom.chpsid.awards@example.mil"))
+	Call memo.ReplaceItemValue("Principal", GetProfileText(db, "MailFrom", "usarmy.tacom.chpsid.awards@example.mil"))
+	Call memo.ReplaceItemValue("Subject", "Awards case " & SafeGetText(caseDoc, "CaseNumber") & " - " & stage)
+	Set rt = memo.CreateRichTextItem("Body")
+	Call rt.AppendText("Dear " & SafeGetText(caseDoc, "RequesterName") & ",")
+	Call rt.AddNewLine(2)
+	Call rt.AppendText(body)
+	Call rt.AddNewLine(2)
+	Call rt.AppendText("Case number: " & SafeGetText(caseDoc, "CaseNumber"))
+	Call rt.AddNewLine(1)
+	Call rt.AppendText("Veteran: " & SafeGetText(caseDoc, "VeteranLastName") & ", " & SafeGetText(caseDoc, "VeteranFirstName"))
+	Call rt.AddNewLine(2)
+	Call rt.AppendText(GetProfileText(db, "HelpDeskText", "Questions: TACOM Clothing & Heraldry PSID customer service."))
+	Call rt.AddNewLine(2)
+	Call rt.AppendText("This mailbox is not monitored. Do not reply.")
+	Call memo.Send(False)
+	Exit Sub
+ErrHandler:
+	Call LogAgent(AGENT_NAME, "Could not mail " & SafeGetText(caseDoc, "CaseNumber") & ": " & Error$)
+	Exit Sub
+End Sub

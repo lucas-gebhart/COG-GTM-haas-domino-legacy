@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='($Lookups)' alias='Vendors|Requesters|Keywords' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='false' onopengoto='top' headers='none'
+ bgcolor='white' rowlinecount='1' headerlinecount='1' uniquekeys='false'>
+<noteinfo noteid='15A' unid='C9D0E1F2A3B4C5D685258A1F00305C22' sequence='44'>
+<created><datetime>20040318T140000,00-05</datetime></created>
+<modified><datetime>20240905T093350,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name></updatedby>
+<code event='selection'><formula>SELECT Form = "Vendor" | Form = "Requester" | Form = "Profile" | Form = "HeraldicItem"</formula></code>
+<column itemname='LookupKey' width='20' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Key'/>
+<code event='value'><formula>@If(Form = "Vendor"; VendorKey; Form = "Requester"; "RQ~" + RequesterKey; Form = "HeraldicItem"; "NSN~" + StockNumber; Form = "Profile"; "NextRequestSerial" : "NextSESSerial" : "StatusList" : "ReleasedStatuses" : "FundCodes" : "ProjectCodes"; "")</formula></code>
+</column>
+<column itemname='LookupValue' width='40' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Value'/>
+<code event='value'><formula>@If(Form = "Vendor"; VendorName; Form = "Requester"; Name; Form = "HeraldicItem"; ItemName; Form = "Profile"; @Text(NextRequestSerial) : @Text(NextSESSerial) : @Implode(StatusList; "|") : @Implode(ReleasedStatuses; "|") : @Implode(FundCodes; "|") : @Implode(ProjectCodes; "|"); "")</formula></code>
+</column>
+<column itemname='LookupExtra' width='40' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Extra'/>
+<code event='value'><formula>@If(Form = "Vendor"; @Text(LeadTimeDays) + "|" + Active + "|" + @Implode(VendorUsers; ";"); Form = "Requester"; DODAAC + "|" + UIC + "|" + UnitName + "|" + Email; Form = "HeraldicItem"; Category + "|" + UnitOfIssue + "|" + @Text(UnitPrice) + "|" + @Text(MaxQtyPerRequest); "")</formula></code>
+</column>
+<item name='$Comment'><text>Hidden multi-purpose lookup view. Aliases Vendors/Requesters/Keywords are used by @DbColumn/@DbLookup in Request, RequestLine, SESFlagRequest, HeraldicItem. Profile rows are multi-value in column 1 so each profile field appears as its own row (classic trick; fragile).</text></item>
+</view>

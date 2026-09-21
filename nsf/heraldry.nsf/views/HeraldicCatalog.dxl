@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='HeraldicCatalog' alias='Catalog|vwCatalog' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='true' onopengoto='lastopened' headers='beveled' opencollapsed='true'
+ bgcolor='white' altrowcolor='#f0f0f0' headerbgcolor='#c0c0c0' rowlinecount='1' headerlinecount='1' uniquekeys='true'>
+<noteinfo noteid='152' unid='A7B8C9D0E1F2A3B485258A1F00305C22' sequence='37'>
+<created><datetime>20040320T100000,00-05</datetime></created>
+<modified><datetime>20200108T110233,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name></updatedby>
+<code event='selection'><formula>SELECT Form = "HeraldicItem" &amp; !@IsAvailable($Conflict)</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='New Catalog Item' icon='5'><code event='hidewhen'><formula>!@IsMember("[TACOM]":"[Admin]"; @UserRoles)</formula></code><code event='click'><formula>@Command([Compose]; "HeraldicItem")</formula></code></action>
+</actionbar>
+<column itemname='StockNumber' width='16' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Stock Number'/>
+<code event='value'><formula>StockNumber</formula></code>
+</column>
+<column itemname='ItemName' width='34' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Item'/>
+<code event='value'><formula>ItemName</formula></code>
+</column>
+<column itemname='Category' width='18' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Category'/>
+<code event='value'><formula>Category</formula></code>
+</column>
+<column itemname='UnitOfIssue' width='4' resizable='true' align='center'>
+<font size='9pt' name='Arial'/>
+<columnheader title='U/I'/>
+<code event='value'><formula>UnitOfIssue</formula></code>
+</column>
+<column itemname='MaxQtyPerRequest' width='6' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Max Qty'/>
+<code event='value'><formula>MaxQtyPerRequest</formula></code>
+</column>
+<column itemname='UnitPrice' width='10' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<numberformat format='currency' digits='2' punctuated='true' parens='false' percent='false'/>
+<columnheader title='Unit Price'/>
+<code event='value'><formula>UnitPrice</formula></code>
+</column>
+<column itemname='Branch' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Branch'/>
+<code event='value'><formula>Branch</formula></code>
+</column>
+<column itemname='LeadTimeDays' width='6' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Lead'/>
+<code event='value'><formula>LeadTimeDays</formula></code>
+</column>
+<column itemname='Active' width='5' resizable='true' align='center'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Active'/>
+<code event='value'><formula>Active</formula></code>
+</column>
+<item name='$Comment'><text>Column order is deliberate: RequestLine @DbLookup uses column 5 (MaxQtyPerRequest) and column 6 (UnitPrice) by position. Do not reorder without updating the form.</text></item>
+</view>

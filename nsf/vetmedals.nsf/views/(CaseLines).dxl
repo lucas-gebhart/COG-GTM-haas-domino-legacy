@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='(CaseLines)' alias='CaseLines' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='false' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='false' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='false'
+ nomenu='false' allowcustomizations='true'>
+<noteinfo noteid='16A' unid='FB0C1D2E3F4A5B6C85258A1F00305D71' sequence='15'>
+<created><datetime>20040301T121500,00-05</datetime></created>
+<modified><datetime>20120403T091200,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT Form = &quot;AwardLine&quot; &amp; !@IsAvailable($Conflict)</formula></code>
+<column itemname='ParentCaseNumber' width='16' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Case'/>
+<code event='value'><formula>ParentCaseNumber</formula></code>
+</column>
+<column itemname='LineNumber' width='3' resizable='true' sort='ascending' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='#'/>
+<code event='value'><formula>@Text(LineNumber)</formula></code>
+</column>
+<column itemname='AwardName' width='34' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Award'/>
+<code event='value'><formula>AwardName</formula></code>
+</column>
+<column itemname='Quantity' width='4' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Qty'/>
+<code event='value'><formula>@Text(Quantity)</formula></code>
+</column>
+<column itemname='SetType' width='20' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Set'/>
+<code event='value'><formula>SetType</formula></code>
+</column>
+<column itemname='Engrave' width='6' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Engrave'/>
+<code event='value'><formula>Engrave</formula></code>
+</column>
+<column itemname='EngravingText' width='30' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Engraving Text'/>
+<code event='value'><formula>EngravingText</formula></code>
+</column>
+<column itemname='LineStatus' width='12' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Status'/>
+<code event='value'><formula>LineStatus</formula></code>
+</column>
+<item name='$Comment'><text>Embedded on the AwardsCase form (single category = CaseNumber). Column 1 is used for LineCount via @DbLookup. AwardLines whose parent case was deleted stay here as orphan categories.</text></item>
+</view>

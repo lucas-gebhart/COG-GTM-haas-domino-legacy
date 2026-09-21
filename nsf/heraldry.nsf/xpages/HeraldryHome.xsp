@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom"
+	pageTitle="Heraldry Automation System - Home">
+	<!-- Launch page (database property "Open designated XPage"). -->
+	<xp:this.resources>
+		<xp:script src="/HAASStatus.jss" clientSide="false" />
+	</xp:this.resources>
+	<xp:this.data>
+		<xp:dominoView var="vwRecent" viewName="RequestsByStatus" />
+	</xp:this.data>
+	<xc:ccLayout pageName="Home" navSelection="home">
+		<xp:this.facets>
+			<xp:panel xp:key="content">
+				<xp:panel styleClass="haasWelcome">
+					<xp:label value="Welcome to the Heraldry Automation System" styleClass="haasH1" />
+					<xp:text escape="false" styleClass="haasIntro">
+						<xp:this.value><![CDATA[<p>This system supports requisitioning of heraldic items (guidons, distinguishing flags, streamers, organizational colors and insignia) by Army unit supply / S4 personnel using <b>DD Form 1348-6</b>, and the ordering of <b>Senior Executive Service positional colors</b>.</p>
+<p>Requests may be modified or cancelled <b>until they are released to a vendor</b>. Use <i>Status Inquiry</i> to check any request by its 14-character document number.</p>]]></xp:this.value>
+					</xp:text>
+				</xp:panel>
+
+				<xp:table styleClass="haasHomeGrid" border="0" cellpadding="6" cellspacing="0">
+					<xp:tr>
+						<xp:td styleClass="haasHomeCell">
+							<xp:panel styleClass="haasBox">
+								<xp:label value="Unit Requesters" styleClass="haasBoxHead" />
+								<xp:link text="Submit a new DD1348-6 request" value="/Request.xsp" styleClass="haasBigLink" />
+								<xp:br />
+								<xp:link text="Modify or cancel an existing request" value="/ModifyRequest.xsp" styleClass="haasBigLink" />
+								<xp:br />
+								<xp:link text="Status inquiry" value="/StatusInquiry.xsp" styleClass="haasBigLink" />
+								<xp:br />
+								<xp:link text="Browse the heraldic item catalog" value="/HeraldicCatalog?OpenView" styleClass="haasBigLink" />
+							</xp:panel>
+						</xp:td>
+						<xp:td styleClass="haasHomeCell">
+							<xp:panel styleClass="haasBox">
+								<xp:label value="SES Flags" styleClass="haasBoxHead" />
+								<xp:link text="Request an SES positional color" value="/SESFlag.xsp" styleClass="haasBigLink" />
+								<xp:br />
+								<xp:link text="SES flag queue (approvers)" value="/SESFlagQueue?OpenView" styleClass="haasBigLink" rendered="#{javascript:HAASStatus.hasRole('[SESApprover]') || HAASStatus.hasRole('[TACOM]')}" />
+							</xp:panel>
+						</xp:td>
+						<xp:td styleClass="haasHomeCell">
+							<xp:panel styleClass="haasBox">
+								<xp:label value="Vendors and Automation System Users" styleClass="haasBoxHead" />
+								<xp:link text="Vendor work queue" value="/VendorQueue.xsp" styleClass="haasBigLink" />
+								<xp:br />
+								<xp:link text="Requests by status (staff)" value="/RequestsByStatus?OpenView" styleClass="haasBigLink" />
+								<xp:br />
+								<xp:link text="Veteran awards cases (CSR)" value="/vetmedals.nsf/CasesByStage?OpenView" styleClass="haasBigLink" />
+							</xp:panel>
+						</xp:td>
+					</xp:tr>
+				</xp:table>
+
+				<xp:label value="Request Summary by Status" styleClass="haasH2" />
+				<xp:repeat id="rptSummary" var="row" indexVar="idx" styleClass="haasSummaryTable">
+					<xp:this.value><![CDATA[#{javascript:var c = HAASStatus.statusSummary(); var out = []; for (var k in c) { out.push({status: k, count: c[k]}); } out}]]></xp:this.value>
+					<xp:tr>
+						<xp:td><xp:link text="#{javascript:row.status}" value="#{javascript:'/RequestsByStatus?OpenView&amp;RestrictToCategory=' + encodeURIComponent(row.status)}" /></xp:td>
+						<xp:td styleClass="haasNum"><xp:text escape="true" value="#{javascript:row.count}" /></xp:td>
+					</xp:tr>
+				</xp:repeat>
+
+				<xp:label value="Recently Entered Requests" styleClass="haasH2" />
+				<xp:viewPanel rows="10" id="vpRecent" var="rowData" value="#{vwRecent}" styleClass="haasView" showColumnHeader="true" showUnreadMarks="false" pageName="/ModifyRequest.xsp">
+					<xp:viewColumn columnName="DocumentNumber" displayAs="link" openDocAsReadonly="true"><xp:viewColumnHeader value="Document Number" /></xp:viewColumn>
+					<xp:viewColumn columnName="StatusCategory"><xp:viewColumnHeader value="Status" /></xp:viewColumn>
+					<xp:viewColumn columnName="UnitName"><xp:viewColumnHeader value="Unit" /></xp:viewColumn>
+					<xp:viewColumn columnName="RequestType"><xp:viewColumnHeader value="Type" /></xp:viewColumn>
+					<xp:viewColumn columnName="EnteredDate"><xp:viewColumnHeader value="Entered" /></xp:viewColumn>
+				</xp:viewPanel>
+
+				<xp:panel styleClass="haasNotice">
+					<xp:text escape="true" value="Historic processing goal: heraldic items are delivered within the vendor lead time (15-60 days) after release. SES flag requests require approval before release." />
+				</xp:panel>
+			</xp:panel>
+		</xp:this.facets>
+	</xc:ccLayout>
+</xp:view>

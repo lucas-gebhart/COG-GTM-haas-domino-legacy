@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='AgingCases' alias='Aging|vwAging' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='true' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='false' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='false'
+ nomenu='false' allowcustomizations='true'>
+<noteinfo noteid='14A' unid='D3E4F5A6B7C8D9EA85258A1F00305D71' sequence='82'>
+<created><datetime>20050110T080000,00-05</datetime></created>
+<modified><datetime>20240118T090005,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name></updatedby>
+<code event='selection'><formula>SELECT Form = &quot;AwardsCase&quot; &amp; AgingFlag != &quot;&quot; &amp; !@IsMember(Stage; &quot;Closed&quot;:&quot;Cancelled&quot;) &amp; !@IsAvailable($Conflict)</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Run NightlyAging Now' icon='12'><code event='hidewhen'><formula>!@IsMember(&quot;[Admin]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;NightlyAging&quot;)</formula></code></action>
+<action title='Send Status Mail' icon='35'><code event='hidewhen'><formula>!@IsMember(&quot;[CSR]&quot;:&quot;[TACOM]&quot;; @UserRoles)</formula></code><code event='click'><formula>@Command([ToolsRunMacro]; &quot;SendStatusMail&quot;)</formula></code></action>
+<action title='Add Case Note' icon='38'><code event='click'><formula>@Command([Compose]; &quot;CaseNote&quot;)</formula></code></action>
+</actionbar>
+<column itemname='AgingFlag' width='20' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Aging'/>
+<code event='value'><formula>@If(AgingFlag = &quot;Red&quot;; &quot;1. RED - over 75 days&quot;; AgingFlag = &quot;Amber&quot;; &quot;2. AMBER - over 60 days&quot;; &quot;3. &quot; + AgingFlag)</formula></code>
+</column>
+<column itemname='DaysOpen' width='7' resizable='true' sort='descending' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Days Open'/>
+<code event='value'><formula>@Text(@Integer((@Today - EnteredDate) / 86400))</formula></code>
+</column>
+<column itemname='CaseNumber' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Case Number'/>
+<code event='value'><formula>CaseNumber</formula></code>
+</column>
+<column itemname='Veteran' width='24' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Veteran'/>
+<code event='value'><formula>VeteranLastName + &quot;, &quot; + VeteranFirstName</formula></code>
+</column>
+<column itemname='Stage' width='22' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Current Stage'/>
+<code event='value'><formula>Stage + @If(Stage = &quot;On Hold&quot;; &quot; (&quot; + HoldReason + &quot;)&quot;; &quot;&quot;)</formula></code>
+</column>
+<column itemname='DaysInStage' width='7' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Days in Stage'/>
+<code event='value'><formula>@Text(DaysInStage)</formula></code>
+</column>
+<column itemname='Priority' width='10' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Priority'/>
+<code event='value'><formula>Priority</formula></code>
+</column>
+<column itemname='EnteredDate' width='10' resizable='true'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Entered'/>
+<code event='value'><formula>@Text(EnteredDate; &quot;D0S0&quot;)</formula></code>
+</column>
+<column itemname='AgingLastEval' width='10' resizable='true'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Last Aged'/>
+<code event='value'><formula>@If(@IsTime(AgingLastEval); @Text(AgingLastEval; &quot;D0S0&quot;); &quot;&quot;)</formula></code>
+</column>
+<column itemname='AssignedCSR' width='18' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='CSR'/>
+<code event='value'><formula>@Name([CN]; AssignedCSR)</formula></code>
+</column>
+<item name='$Comment'><text>Populated by NightlyAging (AgingFlag = Amber at &gt;60 days, Red at &gt;75 days measured from EnteredDate). Thresholds live on the Profile document. Selection depends on the agent having run - the database PostOpen warns if AgingLastRun is older than 36 hours.</text></item>
+</view>

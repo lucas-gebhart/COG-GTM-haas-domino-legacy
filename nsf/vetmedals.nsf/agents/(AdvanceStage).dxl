@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE agent SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<agent name='(AdvanceStage)' xmlns='http://www.lotus.com/dxl' version='12.0' maintenanceversion='2.0'
+ replicaid='C1258A1F00305D71' designerversion='8.5.3' hide='v3 web notes' publicaccess='false' designerlock='false'
+ activatable='true' enabled='true' runasweb='true' allowremotedebugging='true' allowinvokeviaurl='false'
+ runonbehalfof='' onbehalfofinvoker='true'>
+<noteinfo noteid='4B2' unid='1E5F607182930415C1258A1F00305D71' sequence='11'>
+<created><datetime>20040415T111500,00-04</datetime></created>
+<modified><datetime>20230817T143122,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name><name>CN=HAAS-APP01/O=TACOM</name></updatedby>
+<designchange><datetime>20230817T143122,00-04</datetime></designchange>
+<lastrun><datetime>20260921T101233,00-04</datetime></lastrun>
+<rundata processeddocs='1' exitcode='0'><runlog>Started running agent '(AdvanceStage)' on 09/21/2026 10:12:33 AM
+Ran LotusScript code
+Done running agent '(AdvanceStage)' on 09/21/2026 10:12:33 AM</runlog></rundata>
+<trigger type="actionsmenu"/><documentset type="selected"/>
+<runwhen server='CN=HAAS-APP01/O=TACOM'/>
+<code event='options'><lotusscript>' see agents/(AdvanceStage).lss</lotusscript></code>
+<code event='initialize'><lotusscript>' Source of this agent is maintained in agents/(AdvanceStage).lss (DXL export splits the LotusScript into the .lss file).</lotusscript></code>
+<item name='$Comment'><text>Hidden helper run from action buttons: advance selected cases one stage (role-checked).</text></item>
+<item name='$Flags'><text>f3LQ</text></item>
+</agent>

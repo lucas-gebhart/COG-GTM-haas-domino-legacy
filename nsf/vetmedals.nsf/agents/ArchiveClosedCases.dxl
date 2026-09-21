@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE agent SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<agent name='ArchiveClosedCases' xmlns='http://www.lotus.com/dxl' version='12.0' maintenanceversion='2.0'
+ replicaid='C1258A1F00305D71' designerversion='8.5.3' hide='v3 web' publicaccess='false' designerlock='false'
+ activatable='true' enabled='true' runasweb='true' allowremotedebugging='true' allowinvokeviaurl='true'
+ runonbehalfof='' onbehalfofinvoker='true'>
+<noteinfo noteid='4AE' unid='0D4E5F6071829304C1258A1F00305D71' sequence='15'>
+<created><datetime>20081015T090000,00-04</datetime></created>
+<modified><datetime>20210330T101010,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name><name>CN=HAAS-APP01/O=TACOM</name></updatedby>
+<designchange><datetime>20210330T101010,00-04</datetime></designchange>
+<lastrun><datetime>20260920T010000,00-04</datetime></lastrun>
+<rundata processeddocs='96' exitcode='0'><runlog>Started running agent 'ArchiveClosedCases' on 09/20/2026 01:00:00 AM
+Ran LotusScript code
+Done running agent 'ArchiveClosedCases' on 09/20/2026 01:00:00 AM</runlog></rundata>
+<trigger type="scheduled"><schedule type="weekly" runserver="CN=HAAS-APP01/O=TACOM" dayofweek="sunday"><starttime><time>T010000,00</time></starttime></schedule></trigger><documentset type="all"/>
+<runwhen server='CN=HAAS-APP01/O=TACOM'/>
+<code event='options'><lotusscript>' see agents/ArchiveClosedCases.lss</lotusscript></code>
+<code event='initialize'><lotusscript>' Source of this agent is maintained in agents/ArchiveClosedCases.lss (DXL export splits the LotusScript into the .lss file).</lotusscript></code>
+<item name='$Comment'><text>Move cases closed for more than Profile.ArchiveAfterDays (default 730) and their related documents to the archive replica.</text></item>
+<item name='$Flags'><text>f3LQ</text></item>
+</agent>

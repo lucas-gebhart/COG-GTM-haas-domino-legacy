@@ -1,0 +1,116 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+'   Agent: CancelRequest
+'   Trigger: manual (action menu / ?OpenAgent from ModifyRequest.xsp)
+'   Purpose: cancel a DD1348-6 request and all of its line items, provided it has not been released to a vendor.
+'            Released requests raise error 4091 text and are left untouched.
+Option Public
+Option Declare
+Use "HAASCommon"
+Use "HAASMail"
+
+'++LotusScript Development Environment:2:2:Initialize:1:10
+Sub Initialize
+	On Error GoTo ErrHandler
+	Dim s As New NotesSession
+	Dim db As NotesDatabase
+	Dim agent As NotesAgent
+	Dim col As NotesDocumentCollection
+	Dim doc As NotesDocument
+	Dim ws As NotesUIWorkspace
+	Dim reason As String
+	Dim cancelReason As String
+	Dim n As Integer
+
+	Set db = s.CurrentDatabase
+	Set agent = s.CurrentAgent
+
+	If s.IsOnServer Then
+		' Web: the XPage has already prompted for the reason and stored it on the document.
+		Set doc = db.GetDocumentByID(agent.ParameterDocID)
+		If doc Is Nothing Then Exit Sub
+		cancelReason = SafeGetText(doc, "CancelReason")
+		If Not CancelOne(doc, cancelReason, reason) Then
+			Print "Content-type: text/plain"
+			Print reason
+		End If
+		Exit Sub
+	End If
+
+	Set ws = New NotesUIWorkspace
+	cancelReason = ws.Prompt(3, "Cancel Request", "Reason for cancellation (required):", "")
+	If Trim(cancelReason) = "" Then Exit Sub
+	Set col = db.UnprocessedDocuments
+	Set doc = col.GetFirstDocument
+	While Not doc Is Nothing
+		If CancelOne(doc, cancelReason, reason) Then
+			n = n + 1
+		Else
+			Msgbox SafeGetText(doc, "DocumentNumber") & ": " & reason, 48, APP_TITLE
+		End If
+		Set doc = col.GetNextDocument(doc)
+	Wend
+	Call LogAgent("CancelRequest", n & " request(s) cancelled by " & s.CommonUserName & ": " & cancelReason)
+	Exit Sub
+ErrHandler:
+	Call LogAgent("CancelRequest", "Error " & Err & " at line " & Erl & ": " & Error$)
+	Exit Sub
+End Sub
+
+'++LotusScript Development Environment:2:1:CancelOne:1:8
+Function CancelOne(doc As NotesDocument, cancelReason As String, failReason As String) As Boolean
+	On Error GoTo ErrHandler
+	Dim s As New NotesSession
+	Dim lines As NotesDocumentCollection
+	Dim line As NotesDocument
+	Dim oldStatus As String
+	Dim rt As NotesRichTextItem
+
+	CancelOne = False
+	If SafeGetText(doc, "Form") <> "Request" Then
+		failReason = "Only Request documents can be cancelled with this action."
+		Exit Function
+	End If
+	oldStatus = NormalizeStatus(SafeGetText(doc, "Status"))
+	If oldStatus = STATUS_CANCELLED Then
+		failReason = MSG_CANCELLED
+		Exit Function
+	End If
+	If IsReleased(doc) Then
+		failReason = MSG_RELEASED_NOMODIFY
+		Exit Function
+	End If
+
+	Call doc.ReplaceItemValue("Status", STATUS_CANCELLED)
+	Call doc.ReplaceItemValue("CancelledDate", Now)
+	Call doc.ReplaceItemValue("CancelledBy", s.EffectiveUserName)
+	Call doc.ReplaceItemValue("CancelReason", cancelReason)
+	Call AppendStatusHistory(doc, oldStatus, STATUS_CANCELLED, s.CommonUserName)
+
+	' Legacy: cancellation reason is also appended to the rich text Justification so it prints on the DD1348-6.
+	If doc.HasItem("Justification") Then
+		Set rt = doc.GetFirstItem("Justification")
+		If rt.Type = RICHTEXT Then
+			Call rt.AddNewLine(1)
+			Call rt.AppendText("*** CANCELLED " & Format$(Now, "mm/dd/yyyy") & " by " & s.CommonUserName & ": " & cancelReason & " ***")
+		End If
+	End If
+
+	Set lines = doc.Responses
+	Set line = lines.GetFirstDocument
+	While Not line Is Nothing
+		Call line.ReplaceItemValue("LineStatus", STATUS_CANCELLED)
+		Call line.Save(True, False)
+		Set line = lines.GetNextDocument(line)
+	Wend
+
+	If doc.Save(True, False) Then
+		Call SendStatusNotification(doc, STATUS_CANCELLED)
+		CancelOne = True
+	Else
+		failReason = "The request could not be saved."
+	End If
+	Exit Function
+ErrHandler:
+	failReason = "Error " & Err & ": " & Error$
+	Exit Function
+End Function

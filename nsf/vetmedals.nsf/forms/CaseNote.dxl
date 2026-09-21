@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='CaseNote' alias='frmNote' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ hide='web' bgcolor='white' noreplace='false' renderpassthrough='true' formtype='response'
+ inheritvalues='true' inheritfrom='AwardsCase'>
+<noteinfo noteid='136' unid='81DE52A7DCFEA06985258A1F00305D71' sequence='19'>
+<created><datetime>20040301T114500,00-05</datetime></created>
+<modified><datetime>20150907T160108,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<!-- CaseNote: CSR / production-floor note on a case (response document). Phone calls, congressional
+     inquiries, HRC queries, address corrections. Notes are never edited after save (Authors = creator only for 1 hour). -->
+<code event='windowtitle'><formula>"Note on " + ParentCaseNumber + " - " + NoteType</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Go to Case' icon='6'><code event='click'><formula>@Command([OpenDocument]; "0"; ParentUNID)</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='12pt' style='bold' name='Verdana' color='navy'/>Case Note</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='30%'/><tablecolumn width='70%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Case</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computedwhencomposed' name='ParentCaseNumber'><code event='value'><formula>CaseNumber</formula></code></field><run> </run><field type='text' kind='computedwhencomposed' name='ParentUNID'><code event='value'><formula>@Text(@DocumentUniqueID)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Note Type</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='NoteType'><keywords ui='combobox' allownew='true'><textlist><text>Phone Call - Inbound</text><text>Phone Call - Outbound</text><text>Congressional Inquiry</text><text>HRC Query</text><text>NPRC Query</text><text>Address Correction</text><text>NOK Documentation</text><text>QC Rework</text><text>Backorder</text><text>General</text></textlist></keywords><code event='defaultvalue'><formula>"General"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Contact</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ContactName'/><run> </run><field type='text' kind='editable' name='ContactPhone'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Note</run></par></tablecell>
+<tablecell><par def='1'><field type='richtext' kind='editable' name='Body'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Summary (one line)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Summary'><code event='inputvalidation'><formula>@If(@Trim(Summary) = ""; @Failure("Enter a one-line summary for the case history view."); @Length(Summary) &gt; 200; @Failure("Summary may not exceed 200 characters."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Follow-up Due</run></par></tablecell>
+<tablecell><par def='1'><field type='datetime' kind='editable' name='FollowUpDate'><datetimeformat show='date' date='monthdayyear'/></field><run> done: </run><field type='keyword' kind='editable' name='FollowUpDone'><keywords ui='checkbox'><textlist><text>Yes</text></textlist></keywords></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Author</run></par></tablecell>
+<tablecell><par def='1'><field type='names' kind='computedwhencomposed' name='NoteAuthor'><code event='value'><formula>@UserName</formula></code></field><run> </run><field type='datetime' kind='computedwhencomposed' name='NoteDate'><datetimeformat show='datetime' date='monthdayyear' time='hourminute'/><code event='value'><formula>@Now</formula></code></field></par></tablecell></tablerow>
+</table>
+<pardef id='2' hide='read edit print preview'/>
+<par def='2'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true'><code event='value'><formula>DocReaders</formula></code></field></par>
+<par def='2'><field type='names' kind='computed' name='DocAuthors' authors='true' allowmultivalues='true'><code event='value'><formula>@If(@Adjust(NoteDate; 0; 0; 0; 1; 0; 0) &gt; @Now; NoteAuthor : "[Admin]"; "[Admin]")</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+</form>

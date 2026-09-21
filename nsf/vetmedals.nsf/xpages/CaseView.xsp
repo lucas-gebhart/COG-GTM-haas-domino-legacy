@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom" xmlns:xe="http://www.ibm.com/xsp/coreex"
+	pageTitle="#{javascript:'Case ' + caseDoc.getItemValueString('CaseNumber')}">
+	<!-- CSR case detail: header, award lines (response docs), fulfilment timeline, notes, stage actions. -->
+	<xp:this.resources>
+		<xp:script src="/HAASCase.jss" clientSide="false" />
+	</xp:this.resources>
+	<xp:this.beforePageLoad><![CDATA[#{javascript:
+var id = HAASCase.safeUnid(param.documentId);
+if (id == "") {
+	sessionScope.haasError = "Invalid or missing documentId.";
+	context.redirectToPage("CSRLookup.xsp");
+}
+viewScope.unid = id;
+viewScope.msg = "";}]]></xp:this.beforePageLoad>
+
+	<xp:this.data>
+		<xp:dominoDocument var="caseDoc" formName="AwardsCase" action="openDocument" documentId="#{javascript:viewScope.unid}" ignoreRequestParams="true" />
+		<xp:dominoView var="lines" viewName="(CaseLines)" keys="#{javascript:caseDoc.getItemValueString('CaseNumber')}" keysExactMatch="true" />
+		<xp:dominoView var="notes" viewName="($All)" categoryFilter="#{javascript:'CaseNote\\' + caseDoc.getItemValueString('CaseNumber')}" />
+	</xp:this.data>
+
+	<xc:ccLayout pageName="Awards Case" navSelection="cases" showNav="true">
+		<xp:this.facets>
+			<xp:panel xp:key="content">
+				<xc:ccStatusBanner message="#{javascript:viewScope.msg}" />
+
+				<xp:table styleClass="haasCaseHeader" cellpadding="2" cellspacing="0" border="0" width="100%">
+					<xp:tr>
+						<xp:td>
+							<xp:label value="#{javascript:'Awards Case ' + caseDoc.getItemValueString('CaseNumber')}" styleClass="haasH1" />
+							<xp:text escape="true" styleClass="haasSubTitle" value="#{javascript:caseDoc.getItemValueString('VeteranRank') + ' ' + caseDoc.getItemValueString('VeteranLastName') + ', ' + caseDoc.getItemValueString('VeteranFirstName') + ' ' + caseDoc.getItemValueString('VeteranMI')}" />
+						</xp:td>
+						<xp:td align="right">
+							<xp:text escape="true" value="#{javascript:caseDoc.getItemValueString('Stage')}" styleClass="haasStageBadge" />
+							<xp:text escape="true" value="#{javascript:caseDoc.getItemValueString('AgingFlag')}" styleClass="#{javascript:HAASCase.agingClass(caseDoc.getItemValueString('AgingFlag'))}" rendered="#{javascript:caseDoc.getItemValueString('AgingFlag') != ''}" />
+						</xp:td>
+					</xp:tr>
+				</xp:table>
+
+				<!-- Stage progress strip: Authorized > Engraving > Assembly/QC > Warehouse > Shipped > Closed -->
+				<xp:table styleClass="haasStageStrip" cellpadding="3" cellspacing="0" border="1">
+					<xp:tr>
+						<xp:repeat var="st" value="#{javascript:HAASCase.STAGES}" indexVar="i">
+							<xp:td styleClass="#{javascript:(st == caseDoc.getItemValueString('Stage')) ? 'haasStageCurrent' : ((HAASCase.STAGES.indexOf(caseDoc.getItemValueString('Stage')) > i) ? 'haasStageDone' : 'haasStageTodo')}">
+								<xp:text escape="true" value="#{javascript:st}" />
+							</xp:td>
+						</xp:repeat>
+					</xp:tr>
+				</xp:table>
+
+				<xp:table styleClass="haasFormTable" border="1" cellpadding="3" cellspacing="0" width="100%">
+					<xp:tr>
+						<xp:td styleClass="haasLabel" width="18%">Source / Authorization</xp:td>
+						<xp:td width="32%"><xp:text escape="true" value="#{javascript:caseDoc.getItemValueString('Source') + ' - ' + caseDoc.getItemValueString('AuthFileName')}" /></xp:td>
+						<xp:td styleClass="haasLabel" width="18%">Authorization Date</xp:td>
+						<xp:td width="32%"><xp:text escape="true" value="#{caseDoc.AuthorizationDate}"><xp:this.converter><xp:convertDateTime type="date" dateStyle="short" /></xp:this.converter></xp:text></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel">Entered</xp:td>
+						<xp:td><xp:text escape="true" value="#{caseDoc.EnteredDate}"><xp:this.converter><xp:convertDateTime type="date" dateStyle="short" /></xp:this.converter></xp:text>
+							<xp:text escape="true" value="#{javascript:' (' + HAASCase.daysSince(caseDoc.getItemValue('EnteredDate').get(0)) + ' days open)'}" /></xp:td>
+						<xp:td styleClass="haasLabel">Priority</xp:td>
+						<xp:td><xp:text escape="true" value="#{caseDoc.Priority}" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel">Service</xp:td>
+						<xp:td><xp:text escape="true" value="#{javascript:caseDoc.getItemValueString('Branch') + ' ' + caseDoc.getItemValue('ServiceFrom').get(0) + ' - ' + caseDoc.getItemValue('ServiceTo').get(0) + ' (' + caseDoc.getItemValueString('Era') + ')'}" /></xp:td>
+						<xp:td styleClass="haasLabel">Deceased</xp:td>
+						<xp:td><xp:text escape="true" value="#{caseDoc.Deceased}" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel">Requester</xp:td>
+						<xp:td><xp:text escape="true" value="#{javascript:caseDoc.getItemValueString('RequesterName') + ' (' + caseDoc.getItemValueString('Relationship') + ')'}" />
+							<xp:link text=" [lookup]" value="#{javascript:'/CSRLookup.xsp?q=' + encodeURIComponent(caseDoc.getItemValueString('RequesterName'))}" /></xp:td>
+						<xp:td styleClass="haasLabel">Assigned CSR</xp:td>
+						<xp:td><xp:text escape="true" value="#{javascript:@Name('[CN]', caseDoc.getItemValueString('AssignedCSR'))}" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel">Ship To</xp:td>
+						<xp:td colspan="3"><xp:text escape="true" value="#{javascript:caseDoc.getItemValueString('ShipToName') + ', ' + caseDoc.getItemValueString('ShipToStreet') + ', ' + caseDoc.getItemValueString('ShipToCity') + ' ' + caseDoc.getItemValueString('ShipToState') + ' ' + caseDoc.getItemValueString('ShipToZIP')}" /></xp:td>
+					</xp:tr>
+					<xp:tr rendered="#{javascript:caseDoc.getItemValueString('Stage') == 'On Hold'}">
+						<xp:td styleClass="haasLabel">Hold Reason</xp:td>
+						<xp:td colspan="3" styleClass="haasHold"><xp:text escape="true" value="#{caseDoc.HoldReason}" /></xp:td>
+					</xp:tr>
+				</xp:table>
+
+				<xp:label value="Award Lines" styleClass="haasH2" />
+				<xp:viewPanel id="vpLines" value="#{lines}" rows="30" styleClass="haasView" viewStyle="width:100%" showColumnHeader="true">
+					<xp:viewColumn columnName="LineNumber" style="width:4em"><xp:viewColumnHeader value="#" /></xp:viewColumn>
+					<xp:viewColumn columnName="AwardName"><xp:viewColumnHeader value="Award / Decoration" /></xp:viewColumn>
+					<xp:viewColumn columnName="Quantity"><xp:viewColumnHeader value="Qty" /></xp:viewColumn>
+					<xp:viewColumn columnName="SetType"><xp:viewColumnHeader value="Set" /></xp:viewColumn>
+					<xp:viewColumn columnName="Devices"><xp:viewColumnHeader value="Devices" /></xp:viewColumn>
+					<xp:viewColumn columnName="Engrave"><xp:viewColumnHeader value="Engrave" /></xp:viewColumn>
+					<xp:viewColumn columnName="EngravingText"><xp:viewColumnHeader value="Engraving Text" /></xp:viewColumn>
+					<xp:viewColumn columnName="LineStatus"><xp:viewColumnHeader value="Line Status" /></xp:viewColumn>
+				</xp:viewPanel>
+
+				<xp:label value="Fulfilment" styleClass="haasH2" />
+				<xp:table styleClass="haasFormTable" border="1" cellpadding="3" cellspacing="0" width="100%">
+					<xp:tr>
+						<xp:td styleClass="haasLabel">Engraving</xp:td>
+						<xp:td><xp:text escape="true" value="#{caseDoc.EngravingDate}"><xp:this.converter><xp:convertDateTime type="date" dateStyle="short" /></xp:this.converter></xp:text>
+							<xp:link text="#{javascript:' ' + caseDoc.getItemValueString('EngravingJobNumber')}" value="#{javascript:'/EngravingQueue.xsp?job=' + caseDoc.getItemValueString('EngravingJobNumber')}" rendered="#{javascript:caseDoc.getItemValueString('EngravingJobNumber') != ''}" /></xp:td>
+						<xp:td styleClass="haasLabel">Assembly / QC</xp:td>
+						<xp:td><xp:text escape="true" value="#{caseDoc.AssemblyDate}"><xp:this.converter><xp:convertDateTime type="date" dateStyle="short" /></xp:this.converter></xp:text>
+							<xp:text escape="true" value="#{javascript:' ' + caseDoc.getItemValueString('QCResult')}" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel">Warehouse</xp:td>
+						<xp:td><xp:text escape="true" value="#{caseDoc.WarehouseDate}"><xp:this.converter><xp:convertDateTime type="date" dateStyle="short" /></xp:this.converter></xp:text>
+							<xp:text escape="true" value="#{javascript:' bin ' + caseDoc.getItemValueString('PickBin')}" /></xp:td>
+						<xp:td styleClass="haasLabel">Shipped</xp:td>
+						<xp:td><xp:text escape="true" value="#{caseDoc.ShippedDate}"><xp:this.converter><xp:convertDateTime type="date" dateStyle="short" /></xp:this.converter></xp:text>
+							<xp:text escape="true" value="#{javascript:' ' + caseDoc.getItemValueString('TrackingNumber')}" styleClass="haasMono" /></xp:td>
+					</xp:tr>
+					<xp:tr>
+						<xp:td styleClass="haasLabel">Closed</xp:td>
+						<xp:td><xp:text escape="true" value="#{caseDoc.ClosedDate}"><xp:this.converter><xp:convertDateTime type="date" dateStyle="short" /></xp:this.converter></xp:text></xp:td>
+						<xp:td styleClass="haasLabel">Days in Stage</xp:td>
+						<xp:td><xp:text escape="true" value="#{caseDoc.DaysInStage}" /></xp:td>
+					</xp:tr>
+				</xp:table>
+
+				<xp:label value="Status History" styleClass="haasH2" />
+				<xp:repeat var="h" value="#{javascript:caseDoc.getItemValue('StatusHistory')}">
+					<xp:text escape="true" value="#{javascript:h}" styleClass="haasHistoryLine" tagName="div" />
+				</xp:repeat>
+
+				<xp:label value="Case Notes" styleClass="haasH2" />
+				<xp:viewPanel id="vpNotes" value="#{notes}" rows="20" styleClass="haasView" viewStyle="width:100%">
+					<xp:viewColumn columnName="$3"><xp:viewColumnHeader value="Date" /></xp:viewColumn>
+					<xp:viewColumn columnName="$4"><xp:viewColumnHeader value="Type / Summary" /></xp:viewColumn>
+					<xp:viewColumn columnName="$5"><xp:viewColumnHeader value="By" /></xp:viewColumn>
+				</xp:viewPanel>
+
+				<!-- Action bar -->
+				<xp:panel styleClass="haasActionBar">
+					<xp:button value="#{javascript:HAASCase.nextStageLabel(caseDoc.getItemValueString('Stage'))}" id="btnAdvance" styleClass="haasButton"
+						rendered="#{javascript:HAASCase.nextStageLabel(caseDoc.getItemValueString('Stage')) != '' &amp;&amp; HAASCase.roleMayAdvance(caseDoc.getItemValueString('Stage'))}">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:viewScope.msg = HAASCase.advance(viewScope.unid);
+if (viewScope.msg == "") { context.reloadPage(); }}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+					<xp:button value="Place on Hold" id="btnHold" styleClass="haasButton"
+						rendered="#{javascript:['Authorized','Engraving','Assembly/QC','Warehouse'].indexOf(caseDoc.getItemValueString('Stage')) >= 0 &amp;&amp; HAASCase.hasRole('[CSR]')}">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:viewScope.msg = HAASCase.hold(viewScope.unid, viewScope.holdReason);
+if (viewScope.msg == "") { context.reloadPage(); }}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+					<xp:inputText id="holdReason" value="#{viewScope.holdReason}" maxlength="255" size="40" styleClass="haasInput" rendered="#{javascript:HAASCase.hasRole('[CSR]')}">
+						<xp:this.attrs><xp:attr name="placeholder" value="Hold reason" /></xp:this.attrs>
+					</xp:inputText>
+					<xp:button value="Add Case Note" id="btnNote" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:context.redirectToPage("/CaseNote?OpenForm&ParentUNID=" + viewScope.unid);}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+					<xp:button value="Packing Slip" id="btnSlip" styleClass="haasButton" rendered="#{javascript:['Warehouse','Shipped','Closed'].indexOf(caseDoc.getItemValueString('Stage')) >= 0}">
+						<xp:eventHandler event="onclick" submit="false">
+							<xp:this.script><![CDATA[window.open('/vetmedals.nsf/0/#{javascript:viewScope.unid}?OpenDocument&Form=PackingSlip', '_blank');]]></xp:this.script>
+						</xp:eventHandler>
+					</xp:button>
+					<xp:button value="Back to Cases" id="btnBack" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:context.redirectToPage("/CasesByStage?OpenView");}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+				</xp:panel>
+			</xp:panel>
+		</xp:this.facets>
+	</xc:ccLayout>
+</xp:view>

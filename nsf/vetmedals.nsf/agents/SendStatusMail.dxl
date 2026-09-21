@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE agent SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<agent name='SendStatusMail' xmlns='http://www.lotus.com/dxl' version='12.0' maintenanceversion='2.0'
+ replicaid='C1258A1F00305D71' designerversion='8.5.3' hide='v3 web' publicaccess='false' designerlock='false'
+ activatable='true' enabled='true' runasweb='true' allowremotedebugging='true' allowinvokeviaurl='true'
+ runonbehalfof='' onbehalfofinvoker='true'>
+<noteinfo noteid='4AA' unid='9C3D4E5F60718293C1258A1F00305D71' sequence='11'>
+<created><datetime>20060119T140000,00-05</datetime></created>
+<modified><datetime>20191104T151247,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name><name>CN=HAAS-APP01/O=TACOM</name></updatedby>
+<designchange><datetime>20191104T151247,00-05</datetime></designchange>
+<lastrun><datetime>20260921T143000,00-04</datetime></lastrun>
+<rundata processeddocs='17' exitcode='0'><runlog>Started running agent 'SendStatusMail' on 09/21/2026 02:30:00 PM
+Ran LotusScript code
+Done running agent 'SendStatusMail' on 09/21/2026 02:30:00 PM</runlog></rundata>
+<trigger type="scheduled"><schedule type="newmodified" runserver="CN=HAAS-APP01/O=TACOM"/></trigger><documentset type="newmodified"/>
+<runwhen server='CN=HAAS-APP01/O=TACOM'/>
+<code event='options'><lotusscript>' see agents/SendStatusMail.lss</lotusscript></code>
+<code event='initialize'><lotusscript>' Source of this agent is maintained in agents/SendStatusMail.lss (DXL export splits the LotusScript into the .lss file).</lotusscript></code>
+<item name='$Comment'><text>E-mail veterans / next of kin when a case changes stage (only when Requester.Email is present).</text></item>
+<item name='$Flags'><text>f3LQ</text></item>
+</agent>

@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='RequestsByDODAAC' alias='ByDODAAC|vwDODAAC' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='true' onopengoto='lastopened' headers='beveled' opencollapsed='true'
+ bgcolor='white' altrowcolor='#f0f0f0' headerbgcolor='#c0c0c0' rowlinecount='1' headerlinecount='1'>
+<noteinfo noteid='142' unid='C3D4E5F6A7B8C9D085258A1F00305C22' sequence='15'>
+<created><datetime>20040320T093000,00-05</datetime></created>
+<modified><datetime>20120130T160042,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT Form = "Request" &amp; !@IsAvailable($Conflict)</formula></code>
+<column itemname='DODAAC' width='10' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='DODAAC'/>
+<code event='value'><formula>@If(@Trim(DODAAC) = ""; "(No DODAAC)"; @UpperCase(DODAAC))</formula></code>
+</column>
+<column itemname='DocumentNumber' width='16' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Document Number'/>
+<code event='value'><formula>DocumentNumber</formula></code>
+</column>
+<column itemname='UnitName' width='30' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Unit'/>
+<code event='value'><formula>UnitName</formula></code>
+</column>
+<column itemname='Status' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Status'/>
+<code event='value'><formula>Status</formula></code>
+</column>
+<column itemname='FundCode' width='5' resizable='true' align='center'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Fund'/>
+<code event='value'><formula>FundCode</formula></code>
+</column>
+<column itemname='ProjectCode' width='5' resizable='true' align='center'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Proj'/>
+<code event='value'><formula>ProjectCode</formula></code>
+</column>
+<column itemname='ShipToDODAAC' width='10' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Ship-To'/>
+<code event='value'><formula>@If(ShipToDODAAC = DODAAC; ""; ShipToDODAAC)</formula></code>
+</column>
+<column itemname='EnteredDate' width='10' resizable='true' sort='descending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Entered'/>
+<code event='value'><formula>@Text(EnteredDate; "D0S0")</formula></code>
+</column>
+<column itemname='TotalValue' width='10' resizable='true' align='right' totals='total'>
+<font size='9pt' name='Arial'/>
+<numberformat format='currency' digits='2' punctuated='true' parens='false' percent='false'/>
+<columnheader title='Value'/>
+<code event='value'><formula>TotalValue</formula></code>
+</column>
+</view>

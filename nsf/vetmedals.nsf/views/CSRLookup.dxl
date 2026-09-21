@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='CSRLookup' alias='Lookup|vwCSR' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='true' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='false' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='false'
+ nomenu='false' allowcustomizations='true' uniquekeys='false'>
+<noteinfo noteid='15E' unid='C8D9EAFB0C1D2E3F85258A1F00305D71' sequence='28'>
+<created><datetime>20040305T101500,00-05</datetime></created>
+<modified><datetime>20190614T142233,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT (Form = &quot;AwardsCase&quot; | Form = &quot;Requester&quot;) &amp; !@IsAvailable($Conflict)</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Open Case View' icon='6'><code event='click'><formula>@Command([OpenDocument])</formula></code></action>
+</actionbar>
+<column itemname='LookupKey' width='30' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Lookup Key'/>
+<code event='value'><formula>@If(Form = &quot;Requester&quot;; LookupKey : @UpperCase(LastName + &quot;, &quot; + FirstName) : RequesterID; LookupKey)</formula></code>
+</column>
+<column itemname='Display' width='40' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Name / Case'/>
+<code event='value'><formula>@If(Form = &quot;Requester&quot;; DisplayName + &quot; (&quot; + Relationship + &quot;) &quot; + City + &quot;, &quot; + State + &quot; &quot; + ZIP; VeteranLastName + &quot;, &quot; + VeteranFirstName + &quot; - &quot; + CaseNumber)</formula></code>
+</column>
+<column itemname='Form' width='9' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Type'/>
+<code event='value'><formula>@If(Form = &quot;Requester&quot;; &quot;Requester&quot;; &quot;Case&quot;)</formula></code>
+</column>
+<column itemname='Stage' width='14' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Stage'/>
+<code event='value'><formula>@If(Form = &quot;AwardsCase&quot;; Stage; @If(MergedInto != &quot;&quot;; &quot;merged -&gt; &quot; + MergedInto; &quot;&quot;))</formula></code>
+</column>
+<column itemname='Key2' width='12' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Requester ID'/>
+<code event='value'><formula>@If(Form = &quot;Requester&quot;; RequesterID; RequesterKey)</formula></code>
+</column>
+<column itemname='Date' width='10' resizable='true'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Date'/>
+<code event='value'><formula>@If(Form = &quot;AwardsCase&quot;; @Text(EnteredDate; &quot;D0S0&quot;); @Text(CreatedDate; &quot;D0S0&quot;))</formula></code>
+</column>
+<column itemname='Phone' width='14' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Phone'/>
+<code event='value'><formula>@If(Form = &quot;Requester&quot;; Phone; &quot;&quot;)</formula></code>
+</column>
+<item name='$Comment'><text>Multi-valued lookup index used by CSRLookup.xsp and @DbLookup on the AwardsCase form (column 2 returns RequesterName). Because Requester LookupKey collides across duplicates, @DbLookup returns a list and the first value wins silently - see DATA-QUALITY-NOTES.</text></item>
+</view>

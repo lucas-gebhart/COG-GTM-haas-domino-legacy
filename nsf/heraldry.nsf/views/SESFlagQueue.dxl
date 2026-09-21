@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='SESFlagQueue' alias='SESQueue|vwSES' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='true' onopengoto='lastopened' headers='beveled' opencollapsed='false'
+ bgcolor='white' altrowcolor='#eef2f8' headerbgcolor='#c0c0c0' rowlinecount='1' headerlinecount='1'>
+<noteinfo noteid='14E' unid='F6A7B8C9D0E1F2A385258A1F00305C22' sequence='12'>
+<created><datetime>20130611T093000,00-04</datetime></created>
+<modified><datetime>20190305T100910,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT Form = "SESFlagRequest" &amp; !@IsAvailable($Conflict)</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='New SES Flag Request' icon='5'><code event='click'><formula>@Command([Compose]; "SESFlagRequest")</formula></code></action>
+<action title='Approve Selected' icon='23'><code event='hidewhen'><formula>!@IsMember("[SESApprover]"; @UserRoles)</formula></code><code event='click'><formula>@If(Status = "Submitted"; @Do(@SetField("Status"; "Approved"); @SetField("ApprovedBy"; @UserName); @SetField("ApprovalDate"; @Now)); "")</formula></code></action>
+</actionbar>
+<column itemname='Status' width='16' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Status'/>
+<code event='value'><formula>@If(@Trim(Status) = ""; "(No Status)"; Status)</formula></code>
+</column>
+<column itemname='SESFlagNumber' width='14' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='SES Flag Number'/>
+<code event='value'><formula>SESFlagNumber</formula></code>
+</column>
+<column itemname='ExecutiveName' width='24' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Executive'/>
+<code event='value'><formula>ExecutiveName + " (" + ExecutiveTier + ")"</formula></code>
+</column>
+<column itemname='Organization' width='26' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Organization'/>
+<code event='value'><formula>Organization</formula></code>
+</column>
+<column itemname='FlagType' width='24' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Flag Type'/>
+<code event='value'><formula>FlagType</formula></code>
+</column>
+<column itemname='Quantity' width='4' resizable='true' align='right'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Qty'/>
+<code event='value'><formula>Quantity</formula></code>
+</column>
+<column itemname='EnteredDate' width='10' resizable='true' sort='descending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Entered'/>
+<code event='value'><formula>@Text(EnteredDate; "D0S0")</formula></code>
+</column>
+<column itemname='ApprovedBy' width='20' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Approved By'/>
+<code event='value'><formula>@Name([CN]; ApprovedBy)</formula></code>
+</column>
+</view>

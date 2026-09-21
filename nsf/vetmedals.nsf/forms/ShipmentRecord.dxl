@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='ShipmentRecord' alias='frmShipment' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ hide='web' bgcolor='white' noreplace='false' renderpassthrough='true'>
+<noteinfo noteid='132' unid='70CD4196CBED9F5885258A1F00305D71' sequence='52'>
+<created><datetime>20040301T113000,00-05</datetime></created>
+<modified><datetime>20230110T104417,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Oswaldo Ferreira-Lund/OU=CHPSID/O=TACOM</name></updatedby>
+<!-- ShipmentRecord: one per parcel. A case usually has one; backordered lines create a second (partial) shipment.
+     Carrier tracking is keyed in by the warehouse; the ShipConfirm view drives the daily manifest.
+     Date wart: ShippedDate was a text field until 2009 ("3/4/2008", "2008-03-04", "04 MAR 08" all present). -->
+<code event='windowtitle'><formula>"Shipment " + ShipmentNumber + " for case " + CaseNumber</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'><code event='hidewhen'><formula>!@IsMember("[Warehouse]":"[TACOM]":"[Admin]"; @UserRoles)</formula></code><code event='click'><formula>@Command([EditDocument])</formula></code></action>
+<action title='Confirm Shipped' icon='14'><code event='hidewhen'><formula>ShipStatus != "Packed"</formula></code>
+<code event='click'><formula>@If(@Trim(TrackingNumber) = ""; @Return(@Prompt([Ok]; "Ship Confirm"; "Enter the carrier tracking number before confirming shipment.")); @Do(FIELD ShipStatus := "Shipped"; FIELD ShippedDate := @Now; FIELD ShippedBy := @UserName; @Command([FileSave]); @Command([ToolsRunMacro]; "(AdvanceStage)")))</formula></code></action>
+<action title='Open Case' icon='6'><code event='click'><formula>@Command([OpenView]; "CasesByStage"; CaseNumber)</formula></code></action>
+<action title='Print Label' icon='23'><code event='click'><formula>@Command([FilePrint]; "1"; "0"; "ShipLabel")</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='12pt' style='bold' name='Verdana' color='navy'/>Shipment Record</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='30%'/><tablecolumn width='70%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Shipment Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computedwhencomposed' name='ShipmentNumber'><code event='value'><formula>@If(ShipmentNumber != ""; ShipmentNumber; "SHP-" + @Text(@Year(@Now)) + "-" + @Right("000000" + @Text(@GetProfileField("Profile"; "NextShipmentSerial")); 6))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Case Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='CaseNumber'><code event='inputvalidation'><formula>@If(!@Matches(CaseNumber; "VMA-{0-9}{0-9}{0-9}{0-9}-{0-9}{0-9}{0-9}{0-9}{0-9}{0-9}"); @Failure("Case number must be VMA-YYYY-NNNNNN."); @Success)</formula></code></field><run> partial: </run><field type='keyword' kind='editable' name='Partial'><keywords ui='radiobutton' columns='2'><textlist><text>Yes</text><text>No</text></textlist></keywords><code event='defaultvalue'><formula>"No"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Ship-To</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ShipToName'><code event='inputvalidation'><formula>@If(@Trim(ShipToName) = ""; @Failure("Ship-to name is required."); @Success)</formula></code></field><run>, </run><field type='text' kind='editable' name='ShipToStreet'/><run>, </run><field type='text' kind='editable' name='ShipToCity'/><run>, </run><field type='text' kind='editable' name='ShipToState'/><run> </run><field type='text' kind='editable' name='ShipToZIP'><code event='inputvalidation'><formula>@If(@Matches(ShipToZIP; "{0-9}{0-9}{0-9}{0-9}{0-9}") | @Matches(ShipToZIP; "{0-9}{0-9}{0-9}{0-9}{0-9}-{0-9}{0-9}{0-9}{0-9}"); @Success; @Failure("ZIP must be 99999 or 99999-9999."))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Carrier / Service</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Carrier'><keywords ui='combobox' allownew='true'><textlist><text>USPS Priority</text><text>USPS First Class</text><text>USPS Registered</text><text>FedEx Ground</text><text>FedEx 2Day</text><text>UPS Ground</text></textlist></keywords><code event='defaultvalue'><formula>"USPS Priority"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Tracking Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='TrackingNumber'><code event='inputtranslation'><formula>@UpperCase(@ReplaceSubstring(@Trim(TrackingNumber); " "; ""))</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(TrackingNumber) = ""; @Success; @Length(TrackingNumber) &lt; 10 | @Length(TrackingNumber) &gt; 34; @Failure("Tracking number length is not valid for the selected carrier."); !@Matches(TrackingNumber; "{0-9A-Z}*"); @Failure("Tracking number may contain only letters and digits."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Status</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='ShipStatus'><keywords ui='combobox' allownew='false'><textlist><text>Picked</text><text>Packed</text><text>Shipped</text><text>Delivered</text><text>Returned</text></textlist></keywords><code event='defaultvalue'><formula>"Picked"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Dates</run></par></tablecell>
+<tablecell><par def='1'><run>picked </run><field type='datetime' kind='computedwhencomposed' name='PickedDate'><datetimeformat show='date' date='monthdayyear'/><code event='value'><formula>@Today</formula></code></field><run> shipped </run><field type='datetime' kind='editable' name='ShippedDate'><datetimeformat show='date' date='monthdayyear'/></field><run> delivered </run><field type='datetime' kind='editable' name='DeliveredDate'><datetimeformat show='date' date='monthdayyear'/></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Contents</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Contents' allowmultivalues='true' listdisplayseparator='newline' listinputseparators='newline'/><run> pieces </run><field type='number' kind='editable' name='PieceCount'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/></field><run> weight (oz) </run><field type='number' kind='editable' name='WeightOz'><numberformat format='fixed' digits='1' punctuated='false' parens='false' percent='false'/></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Shipped By</run></par></tablecell>
+<tablecell><par def='1'><field type='names' kind='editable' name='ShippedBy'/><run> postage $</run><field type='number' kind='editable' name='Postage'><numberformat format='fixed' digits='2' punctuated='true' parens='false' percent='false'/></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Return / Exception</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ExceptionNote' description='Returned-to-sender reason, address correction, damaged, etc.'/></par></tablecell></tablerow>
+</table>
+<pardef id='2' hide='read edit print preview'/>
+<par def='2'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true'><code event='value'><formula>"[TACOM]":"[CSR]":"[Warehouse]":"[Admin]":"[ReadOnlyAudit]":"LocalDomainServers"</formula></code></field></par>
+<par def='2'><field type='text' kind='computed' name='ShipDateText' description='Legacy text copy of ShippedDate kept for the 2004-2009 manifest report'><code event='value'><formula>@If(@Text(ShippedDate) = ""; ShipDateText; @Text(ShippedDate; "D0S0"))</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+</form>

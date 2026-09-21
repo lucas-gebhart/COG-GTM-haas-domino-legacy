@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE subform SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<subform name='sfRequesterPOC' alias='sfPOC' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ hide='notes' noreplace='false' includeininsertsubformdialog='true' includeinnewformdialog='false'
+ renderpassthrough='true'>
+<noteinfo noteid='11E' unid='2C7A9E4D5B1F4A0E85258A1F00305C22' sequence='31'>
+<created><datetime>20040312T104400,00-05</datetime></created>
+<modified><datetime>20190603T091207,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='8pt' name='Arial' color='gray'/>Shared by Request and SESFlagRequest. Requester identity is copied (not linked) from the Requester document at compose time.</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Requester Name</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='RequesterName'>
+<code event='defaultvalue'><formula>@If(@IsNewDoc; @Text(@DbLookup("Notes":"NoCache"; ""; "($Lookups)"; "RQ~" + @Name([Abbreviate]; @UserName); 2)); RequesterName)</formula></code>
+<code event='inputtranslation'><formula>@Trim(RequesterName)</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(RequesterName) = ""; @Failure("Requester name is required."); @Length(RequesterName) &gt; 80; @Failure("Requester name may not exceed 80 characters."); @Success)</formula></code>
+</field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Rank / Grade</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='RequesterRank' allownew='true'>
+<keywords ui='combobox' columns='1' allownew='true'><textlist>
+<text>PVT</text><text>PFC</text><text>SPC</text><text>CPL</text><text>SGT</text><text>SSG</text><text>SFC</text><text>MSG</text><text>1SG</text><text>SGM</text><text>CSM</text>
+<text>WO1</text><text>CW2</text><text>CW3</text><text>CW4</text><text>2LT</text><text>1LT</text><text>CPT</text><text>MAJ</text><text>LTC</text><text>COL</text>
+<text>GS-07</text><text>GS-09</text><text>GS-11</text><text>GS-12</text><text>GS-13</text><text>CIV</text><text>CTR</text></textlist></keywords>
+</field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Duty Position</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='RequesterRole'>
+<keywords ui='combobox' columns='1'><textlist><text>S4</text><text>Supply Sergeant</text><text>Property Book Officer</text><text>Unit Commander</text><text>Executive Officer</text><text>Protocol Officer</text><text>Other</text></textlist></keywords>
+</field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Telephone (DSN / Commercial)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='RequesterPhone'>
+<code event='inputtranslation'><formula>@Trim(RequesterPhone)</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(RequesterPhone) = ""; @Failure("A telephone number is required."); @Length(RequesterPhone) &gt; 40; @Failure("Telephone may not exceed 40 characters."); @Success)</formula></code>
+</field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>E-mail</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='RequesterEmail'>
+<code event='inputtranslation'><formula>@LowerCase(@Trim(RequesterEmail))</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(RequesterEmail) = ""; @Failure("An e-mail address is required for status notifications.");
+	!@Contains(RequesterEmail; "@") | @Length(RequesterEmail) &gt; 120; @Failure("E-mail address is not valid.");
+	!@Ends(RequesterEmail; ".mil") &amp; !@Ends(RequesterEmail; ".gov"); @Failure("E-mail must be a .mil or .gov address.");
+	@Success)</formula></code>
+</field></par></tablecell></tablerow>
+</table>
+</richtext></body>
+<item name='$Flags'><text>U</text></item>
+</subform>

@@ -1,0 +1,335 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='Request' alias='DD1348-6|frmRequest' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ default='true' hide='notes' bgcolor='white' noreplace='false' renderpassthrough='true'
+ inheritfieldsfromselecteddoc='false' recalconrefresh='true' mergeconflicts='true'
+ anonymousform='false' trackreads='false' inheritfromparentviewdoc='true'>
+<noteinfo noteid='116' unid='8D2B6C1A0F3E4B7C85258A1F00305C22' sequence='187'>
+<created><datetime>20040312T101500,00-05</datetime></created>
+<modified><datetime>20230817T143122,00-04</datetime></modified>
+<revised><datetime>20230817T143122,00-04</datetime></revised>
+<lastaccessed><datetime>20260918T073002,00-04</datetime></lastaccessed>
+<addedtofile><datetime>20040312T101500,00-05</datetime></addedtofile>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name>
+<name>CN=Domino Developer/O=HAAS</name></updatedby>
+<wassignedby><name>CN=HAAS Signer/O=HAAS</name></wassignedby>
+<globals>
+<code event='options'><lotusscript>Option Public
+Option Declare
+Use "HAASCommon"
+Use "HAASValidation"
+Use "HAASMail"</lotusscript></code>
+<code event='declarations'><lotusscript>Dim gSession As NotesSession
+Dim gWorkspace As NotesUIWorkspace
+Dim gOriginalStatus As String</lotusscript></code>
+</globals>
+<code event='windowtitle'><formula>@If(@IsNewDoc; "New DD Form 1348-6 Request"; "Request " + DocumentNumber + " - " + Status)</formula></code>
+<code event='queryopen'><lotusscript>Sub Queryopen(Source As Notesuidocument, Mode As Integer, Isnewdoc As Variant, Continue As Variant)
+	Set gSession = New NotesSession
+	Set gWorkspace = New NotesUIWorkspace
+	If Not Isnewdoc Then
+		gOriginalStatus = Source.Document.GetItemValue("Status")(0)
+		' Legacy rule (2007): once released to the vendor the header is frozen. Modify/Cancel
+		' go through the ModifyRequest XPage which shows the same message.
+		If Mode = 1 And IsReleased(Source.Document) Then
+			Msgbox MSG_RELEASED_NOMODIFY, 48, "Heraldry Automation System"
+			Continue = False
+		End If
+	End If
+End Sub</lotusscript></code>
+<code event='querysave'><lotusscript>Sub Querysave(Source As Notesuidocument, Continue As Variant)
+	Dim doc As NotesDocument
+	Set doc = Source.Document
+	On Error GoTo ErrHandler
+	' Field-level @Formula validation runs first (input validation events); this is the
+	' cross-field pass that @Formula cannot express cleanly.
+	If Not ValidateRequestHeader(doc) Then
+		Continue = False
+		Exit Sub
+	End If
+	If doc.GetItemValue("Status")(0) &lt;&gt; gOriginalStatus Then
+		Call AppendStatusHistory(doc, gOriginalStatus, doc.GetItemValue("Status")(0), gSession.CommonUserName)
+	End If
+	Call doc.ReplaceItemValue("LastModifiedBy", gSession.UserName)
+	Call doc.ReplaceItemValue("LastModifiedDate", Now)
+	Exit Sub
+ErrHandler:
+	Msgbox "Error " &amp; Err &amp; " in Querysave: " &amp; Error$ &amp; " (line " &amp; Erl &amp; ")", 16, "HAAS"
+	Continue = False
+	Exit Sub
+End Sub</lotusscript></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<actionbarstyle><font name='Arial' pitch='variable' truetype='true' familyid='20'/></actionbarstyle>
+<action title='Save' icon='5' hide='read preview'>
+<code event='click'><formula>@Command([FileSave])</formula></code>
+</action>
+<action title='Save &amp; Close' icon='5' hide='read preview'>
+<code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code>
+</action>
+<action title='Edit' icon='5' hide='edit preview'>
+<code event='hidewhen'><formula>@IsMember("Released to Vendor":"In Production":"Shipped":"Complete":"Cancelled"; Status) &amp; !@IsMember("[Admin]"; @UserRoles)</formula></code>
+<code event='click'><formula>@Command([EditDocument])</formula></code>
+</action>
+<action title='Submit Request' icon='23' hide='read preview'>
+<code event='hidewhen'><formula>Status != "Draft"</formula></code>
+<code event='click'><formula>@If(@Trim(JustificationText) = ""; @Return(@Prompt([Ok]; "Heraldry Automation System"; "A justification is required before the request can be submitted.")); "");
+@SetField("Status"; "Submitted");
+@SetField("SubmittedDate"; @Now);
+@Command([FileSave]);
+@Command([FileCloseWindow])</formula></code>
+</action>
+<action title='Release to Vendor' icon='83'>
+<code event='hidewhen'><formula>!@IsMember("[TACOM]"; @UserRoles) | !@IsMember("Approved":"Under Review"; Status)</formula></code>
+<code event='click'><lotusscript>Sub Click(Source As Button)
+	Dim ws As New NotesUIWorkspace
+	Dim db As NotesDatabase
+	Dim agent As NotesAgent
+	Set db = gSession.CurrentDatabase
+	Set agent = db.GetAgent("ReleaseToVendor")
+	Call ws.CurrentDocument.Save(True, False)
+	Call agent.RunOnServer(ws.CurrentDocument.Document.NoteID)
+	Call ws.CurrentDocument.Close
+	Call ws.EditDocument(False, db.GetDocumentByID(ws.CurrentDocument.Document.NoteID))
+End Sub</lotusscript></code>
+</action>
+<action title='Cancel Request' icon='81'>
+<code event='hidewhen'><formula>@IsMember("Released to Vendor":"In Production":"Shipped":"Complete":"Cancelled"; Status)</formula></code>
+<code event='click'><lotusscript>Sub Click(Source As Button)
+	Dim ws As New NotesUIWorkspace
+	Dim reason As Variant
+	reason = ws.Prompt(PROMPT_OKCANCELEDIT, "Cancel Request", "Enter the reason for cancellation:")
+	If IsEmpty(reason) Then Exit Sub
+	Call ws.CurrentDocument.FieldSetText("CancelReason", CStr(reason))
+	Call gSession.CurrentDatabase.GetAgent("CancelRequest").RunOnServer(ws.CurrentDocument.Document.NoteID)
+	Call ws.CurrentDocument.Close
+End Sub</lotusscript></code>
+</action>
+<action title='Print DD1348-6' icon='34'>
+<code event='click'><formula>@Command([FilePrint])</formula></code>
+</action>
+<action title='Status History' icon='14'>
+<code event='click'><formula>@Prompt([OkCancelList]; "Status History - " + DocumentNumber; "Status changes recorded on this request:"; ""; @If(@Elements(StatusHistory) = 0; "(none)"; StatusHistory))</formula></code>
+</action>
+</actionbar>
+<body><richtext>
+<pardef id='1' leftmargin='0' keepwithnext='true' keeptogether='true'/>
+<par def='1'><run><font size='14pt' style='bold' name='Verdana' pitch='variable' truetype='true' familyid='20' color='navy'/>DD FORM 1348-6 &#8212; DoD Single Line Item Requisition System Document (Heraldic Items)</run></par>
+<pardef id='2' leftmargin='0'/>
+<par def='2'><run><font size='8pt' name='Arial' color='gray'/>Heraldry Automation System &#183; TACOM ILSC Clothing &amp; Heraldry PSID &#183; Requests may be modified or cancelled until released to the vendor.</run></par>
+<pardef id='3'><code event='hidewhen'><formula>@IsNewDoc</formula></code></pardef>
+<par def='3'><run><font size='9pt' name='Arial' style='bold'/>Document Number: </run><field type='text' kind='computed' name='DocumentNumber'>
+<code event='defaultvalue'><formula>""</formula></code>
+<code event='value'><formula>@If(DocumentNumber != ""; DocumentNumber;
+	@Trim(DODAAC) = ""; "";
+	@UpperCase(DODAAC) + @Right(@Text(@Year(@Today)); 1) + @Right("000" + @Text(@Integer((@Today - @Date(@Year(@Today); 1; 1)) / 86400) + 1); 3) + @Right("0000" + @Text(@DbLookup("Notes":"NoCache"; ""; "($Lookups)"; "NextRequestSerial"; 2)); 4))</formula></code>
+</field><run>    Status: </run><field type='keyword' kind='editable' name='Status' allowmultivalues='false' allownew='true'>
+<keywords ui='combobox' columns='1' allownew='true'><textlist>
+<text>Draft</text><text>Submitted</text><text>Under Review</text><text>Approved</text><text>Released to Vendor</text>
+<text>In Production</text><text>Shipped</text><text>Complete</text><text>Cancelled</text></textlist></keywords>
+<code event='defaultvalue'><formula>"Draft"</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(Status) = ""; @Failure("A status is required."); @Success)</formula></code>
+</field></par>
+
+<par def='2'><run><font size='11pt' style='bold' name='Verdana'/>Section I &#8212; Requisition Header</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow>
+<tablecell><par def='2'><run><font style='bold' size='9pt'/>1. DODAAC (Requisitioner)</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='DODAAC' description='Six-character Department of Defense Activity Address Code'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(DODAAC))</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(DODAAC) = ""; @Failure("DODAAC is required (block 1).");
+	@Length(DODAAC) != 6; @Failure("DODAAC must be exactly 6 characters.");
+	!@Matches(DODAAC; "{A-Z0-9}{A-Z0-9}{A-Z0-9}{A-Z0-9}{A-Z0-9}{A-Z0-9}"); @Failure("DODAAC must be 6 alphanumeric characters (A-Z, 0-9).");
+	@Success)</formula></code>
+</field><run><font size='8pt' color='gray'/>  e.g. W45N3A</run></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='2'><run><font style='bold' size='9pt'/>2. UIC (Requesting Unit)</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='UIC' description='Army Unit Identification Code, W + 5 alphanumerics'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(UIC))</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(UIC) = ""; @Failure("UIC is required.");
+	@Length(UIC) != 6; @Failure("UIC must be exactly 6 characters.");
+	@Left(UIC; 1) != "W"; @Failure("Army UICs begin with W.");
+	!@Matches(UIC; "W{A-Z0-9}{A-Z0-9}{A-Z0-9}{A-Z0-9}{A-Z0-9}"); @Failure("UIC must be W followed by 5 alphanumeric characters.");
+	@Success)</formula></code>
+</field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='2'><run><font style='bold' size='9pt'/>Unit Designation</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='UnitName'>
+<code event='inputtranslation'><formula>@Trim(UnitName)</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(UnitName) = ""; @Failure("Unit designation is required."); @Length(UnitName) &gt; 120; @Failure("Unit designation may not exceed 120 characters."); @Success)</formula></code>
+</field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='2'><run><font style='bold' size='9pt'/>3. Requisition Priority Designator (RPD)</run></par></tablecell>
+<tablecell><par def='2'><field type='keyword' kind='editable' name='RPD' description='UMMIPS priority designator 01-15'>
+<keywords ui='combobox' columns='1'><textlist>
+<text>01</text><text>02</text><text>03</text><text>04</text><text>05</text><text>06</text><text>07</text><text>08</text>
+<text>09</text><text>10</text><text>11</text><text>12</text><text>13</text><text>14</text><text>15</text></textlist></keywords>
+<code event='defaultvalue'><formula>"13"</formula></code>
+<code event='inputvalidation'><formula>@If(!@IsMember(RPD; "01":"02":"03":"04":"05":"06":"07":"08":"09":"10":"11":"12":"13":"14":"15"); @Failure("Requisition Priority Designator must be 01 through 15."); @Success)</formula></code>
+</field><run><font size='8pt' color='gray'/>  01-03 requires SES/GO justification; 09-15 routine (15-60 day manufacturing lead time)</run></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='2'><run><font style='bold' size='9pt'/>4. Signal Code</run></par></tablecell>
+<tablecell><par def='2'><field type='keyword' kind='editable' name='SignalCode'>
+<keywords ui='combobox' columns='1'><textlist><text>A</text><text>B</text><text>C</text><text>D</text><text>J</text><text>K</text><text>L</text><text>M</text></textlist></keywords>
+<code event='defaultvalue'><formula>"A"</formula></code>
+</field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='2'><run><font style='bold' size='9pt'/>5. Fund Code</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='FundCode'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(FundCode))</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(FundCode) = ""; @Failure("Fund code is required (block 5)."); @Length(FundCode) != 2; @Failure("Fund code must be 2 characters."); @Success)</formula></code>
+</field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='2'><run><font style='bold' size='9pt'/>6. Project Code</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='ProjectCode'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(ProjectCode))</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(ProjectCode) = ""; @Success; @Length(ProjectCode) != 3; @Failure("Project code must be blank or exactly 3 characters."); @Success)</formula></code>
+</field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='2'><run><font style='bold' size='9pt'/>7. Supplementary Address</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='SupplementaryAddress'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(SupplementaryAddress))</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(SupplementaryAddress) = ""; @Success; @Length(SupplementaryAddress) != 6; @Failure("Supplementary address must be a 6-character DODAAC."); @Success)</formula></code>
+</field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='2'><run><font style='bold' size='9pt'/>Request Type</run></par></tablecell>
+<tablecell><par def='2'><field type='keyword' kind='editable' name='RequestType'>
+<keywords ui='combobox' columns='1'><textlist>
+<text>Guidon</text><text>Distinguishing Flag</text><text>Organizational Colors</text><text>Streamer</text>
+<text>Positional Color</text><text>Automobile Flag</text><text>Insignia</text><text>Mixed</text></textlist></keywords>
+<code event='defaultvalue'><formula>"Guidon"</formula></code>
+</field></par></tablecell>
+</tablerow>
+<tablerow>
+<tablecell><par def='2'><run><font style='bold' size='9pt'/>Required Delivery Date</run></par></tablecell>
+<tablecell><par def='2'><field type='datetime' kind='editable' name='RequiredDeliveryDate'>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<code event='inputvalidation'><formula>@If(@Text(RequiredDeliveryDate) = ""; @Success; RequiredDeliveryDate &lt; @Adjust(@Today; 0; 0; 15; 0; 0; 0); @Failure("Required delivery date must be at least 15 days out (minimum manufacturing lead time)."); @Success)</formula></code>
+</field></par></tablecell>
+</tablerow>
+</table>
+
+<par def='2'><run><font size='11pt' style='bold' name='Verdana'/>Section II &#8212; Ship To</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow><tablecell><par def='2'><run><font style='bold' size='9pt'/>Ship-To DODAAC</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='ShipToDODAAC'>
+<code event='defaultvalue'><formula>DODAAC</formula></code>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(ShipToDODAAC))</formula></code>
+<code event='inputvalidation'><formula>@If(@Trim(ShipToDODAAC) = ""; @Success; @Length(ShipToDODAAC) != 6; @Failure("Ship-to DODAAC must be 6 characters."); @Success)</formula></code>
+</field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='2'><run><font style='bold' size='9pt'/>Ship-To Name</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='ShipToName'>
+<code event='inputvalidation'><formula>@If(@Trim(ShipToName) = ""; @Failure("Ship-to name is required."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='2'><run><font style='bold' size='9pt'/>Address</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='ShipToAddress1'>
+<code event='inputvalidation'><formula>@If(@Trim(ShipToAddress1) = ""; @Failure("Ship-to street address is required."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='2'><run><font style='bold' size='9pt'/>Address (line 2)</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='ShipToAddress2'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='2'><run><font style='bold' size='9pt'/>City / State / ZIP</run></par></tablecell>
+<tablecell><par def='2'><field type='text' kind='editable' name='ShipToCity'>
+<code event='inputvalidation'><formula>@If(@Trim(ShipToCity) = ""; @Failure("Ship-to city is required."); @Success)</formula></code></field><run> </run>
+<field type='text' kind='editable' name='ShipToState'>
+<code event='inputtranslation'><formula>@UpperCase(@Trim(ShipToState))</formula></code>
+<code event='inputvalidation'><formula>@If(@Length(ShipToState) != 2; @Failure("State must be a 2-letter postal abbreviation (use AE/AP for APO addresses)."); @Success)</formula></code></field><run> </run>
+<field type='text' kind='editable' name='ShipToZIP'>
+<code event='inputvalidation'><formula>@If(!@Matches(ShipToZIP; "{0-9}{0-9}{0-9}{0-9}{0-9}") &amp; !@Matches(ShipToZIP; "{0-9}{0-9}{0-9}{0-9}{0-9}-{0-9}{0-9}{0-9}{0-9}"); @Failure("ZIP must be 5 digits or ZIP+4."); @Success)</formula></code></field></par></tablecell></tablerow>
+</table>
+
+<par def='2'><run><font size='11pt' style='bold' name='Verdana'/>Section III &#8212; Requester Point of Contact</run></par>
+<subformref name='sfRequesterPOC'/>
+
+<par def='2'><run><font size='11pt' style='bold' name='Verdana'/>Section IV &#8212; Justification / Remarks</run></par>
+<par def='2'><field type='richtext' kind='editable' name='Justification' description='Free-form justification; scanned DD1348-6 may be attached here ($FILE)'/></par>
+<pardef id='4' hide='read edit print preview'/>
+<par def='4'><run>Plain-text mirror of Justification, maintained by Querysave for view columns and validation: </run><field type='text' kind='computed' name='JustificationText'>
+<code event='value'><formula>@If(@IsAvailable(JustificationText); JustificationText; @Abstract([TextOnly]; 2000; ""; "Justification"))</formula></code>
+</field></par>
+
+<par def='2'><run><font size='11pt' style='bold' name='Verdana'/>Section V &#8212; Line Items</run></par>
+<pardef id='5'><code event='hidewhen'><formula>@IsNewDoc</formula></code></pardef>
+<par def='5'><run><font size='9pt'/>Line items are RequestLine response documents. Line Count: </run><field type='number' kind='computed' name='LineCount'>
+<numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/>
+<code event='value'><formula>@If(@IsNewDoc; 0; @Elements(@DbLookup("Notes":"NoCache"; ""; "($Lookups)"; "RL~" + DocumentNumber; 2)))</formula></code>
+</field><run>    Total Value: $</run><field type='number' kind='computed' name='TotalValue'>
+<numberformat format='fixed' digits='2' punctuated='true' parens='false' percent='false'/>
+<code event='value'><formula>@If(@IsNewDoc; 0; @Sum(@TextToNumber(@DbLookup("Notes":"NoCache"; ""; "($Lookups)"; "RL~" + DocumentNumber; 3))))</formula></code>
+</field></par>
+<par def='5'><run><font size='9pt'/>Embedded view of response documents (RequestLines) rendered here in the Notes client: </run></par>
+<par def='5'><embeddedview name='($Lookups)' showtitle='false' showheader='true' showselectionmargin='false' rowspacing='1' showbelowborder='false' fixedcolumn='0'>
+<code event='showsingleview'><formula>"RL~" + DocumentNumber</formula></code>
+</embeddedview></par>
+
+<par def='2'><run><font size='11pt' style='bold' name='Verdana'/>Section VI &#8212; Processing (TACOM use only)</run></par>
+<pardef id='6'><code event='hidewhen'><formula>!@IsMember("[TACOM]":"[Admin]":"[DLA]"; @UserRoles)</formula></code></pardef>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#e8eef8'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow><tablecell><par def='6'><run><font style='bold' size='9pt'/>Entered</run></par></tablecell>
+<tablecell><par def='6'><field type='datetime' kind='computedwhencomposed' name='EnteredDate'>
+<datetimeformat show='datetime' date='monthdayyear' time='hourminute' zone='never'/>
+<code event='value'><formula>@Now</formula></code></field><run> by </run>
+<field type='names' kind='computedwhencomposed' name='EnteredBy'><code event='value'><formula>@UserName</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='6'><run><font style='bold' size='9pt'/>Submitted</run></par></tablecell>
+<tablecell><par def='6'><field type='datetime' kind='computed' name='SubmittedDate'>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<code event='value'><formula>@If(@IsAvailable(SubmittedDate); SubmittedDate; Status != "Draft"; @Now; "")</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='6'><run><font style='bold' size='9pt'/>Reviewed By</run></par></tablecell>
+<tablecell><par def='6'><field type='names' kind='editable' name='ReviewedBy'><keywords ui='dialoglist' columns='1'><formula>@DbColumn("Notes":"NoCache"; ""; "($Lookups)"; 2)</formula></keywords></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='6'><run><font style='bold' size='9pt'/>Approved Date</run></par></tablecell>
+<tablecell><par def='6'><field type='datetime' kind='editable' name='ApprovedDate'><datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='6'><run><font style='bold' size='9pt'/>Vendor (CAGE)</run></par></tablecell>
+<tablecell><par def='6'><field type='keyword' kind='editable' name='VendorKey' allownew='true'>
+<keywords ui='combobox' columns='1'><formula>@DbColumn("Notes":"NoCache"; ""; "Vendors"; 1)</formula></keywords>
+<code event='inputvalidation'><formula>@If(Status = "Released to Vendor" &amp; @Trim(VendorKey) = ""; @Failure("A vendor must be assigned before the request can be released."); @Success)</formula></code>
+</field><run> </run><field type='text' kind='computed' name='VendorName'>
+<code event='value'><formula>@If(@Trim(VendorKey) = ""; ""; @Text(@DbLookup("Notes":"NoCache"; ""; "Vendors"; VendorKey; 2)))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='6'><run><font style='bold' size='9pt'/>Released to Vendor</run></par></tablecell>
+<tablecell><par def='6'><field type='datetime' kind='computed' name='ReleasedDate'>
+<datetimeformat show='datetime' date='monthdayyear' time='hourminute' zone='never'/>
+<code event='value'><formula>@If(@IsAvailable(ReleasedDate); ReleasedDate; "")</formula></code></field><run> by </run>
+<field type='names' kind='computed' name='ReleasedBy'><code event='value'><formula>@If(@IsAvailable(ReleasedBy); ReleasedBy; "")</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='6'><run><font style='bold' size='9pt'/>Estimated Ship Date</run></par></tablecell>
+<tablecell><par def='6'><field type='datetime' kind='computed' name='EstimatedShipDate'>
+<datetimeformat show='date' date='monthdayyear' time='hourminute' zone='never'/>
+<code event='value'><formula>@If(@Text(ReleasedDate) = "" | @Trim(VendorKey) = ""; ""; @Adjust(ReleasedDate; 0; 0; @TextToNumber(@Text(@DbLookup("Notes":"NoCache"; ""; "Vendors"; VendorKey; 4))); 0; 0; 0))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='6'><run><font style='bold' size='9pt'/>Cancellation</run></par></tablecell>
+<tablecell><par def='6'><field type='text' kind='editable' name='CancelReason'/><run> on </run>
+<field type='datetime' kind='computed' name='CancelledDate'><datetimeformat show='datetime' date='monthdayyear' time='hourminute' zone='never'/>
+<code event='value'><formula>@If(@IsAvailable(CancelledDate); CancelledDate; "")</formula></code></field><run> by </run>
+<field type='names' kind='computed' name='CancelledBy'><code event='value'><formula>@If(@IsAvailable(CancelledBy); CancelledBy; "")</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='6'><run><font style='bold' size='9pt'/>Status History</run></par></tablecell>
+<tablecell><par def='6'><field type='text' kind='computed' name='StatusHistory' allowmultivalues='true' listdisplayseparator='newline' listinputseparators='newline'>
+<code event='value'><formula>@If(@IsAvailable(StatusHistory); StatusHistory; "")</formula></code></field></par></tablecell></tablerow>
+</table>
+
+<pardef id='7' hide='read edit print preview'/>
+<par def='7'><run><font size='8pt' color='gray'/>Hidden security and housekeeping fields:</run></par>
+<par def='7'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true' listinputseparators='comma semicolon' listdisplayseparator='semicolon'>
+<code event='value'><formula>@Trim(@Unique("[TACOM]" : "[DLA]" : "[Admin]" : "[ReadOnlyAudit]" : "LocalDomainServers" : EnteredBy : @If(@Trim(VendorKey) != ""; "Vendor-" + VendorKey; "")))</formula></code>
+</field></par>
+<par def='7'><field type='names' kind='computed' name='DocAuthors' authors='true' allowmultivalues='true' listinputseparators='comma semicolon' listdisplayseparator='semicolon'>
+<code event='value'><formula>@Trim(@Unique("[TACOM]" : "[Admin]" : EnteredBy : @If(@IsMember(Status; "Released to Vendor":"In Production":"Shipped"); "Vendor-" + VendorKey; "")))</formula></code>
+</field></par>
+<par def='7'><field type='text' kind='computed' name='Priority' description='LEGACY - superseded by RPD in 2009, still populated for the old RequestsByPriority view'>
+<code event='value'><formula>@If(@TextToNumber(RPD) &lt;= 3; "HIGH"; @TextToNumber(RPD) &lt;= 8; "MEDIUM"; "ROUTINE")</formula></code></field></par>
+<par def='7'><field type='names' kind='computed' name='LastModifiedBy'><code event='value'><formula>@If(@IsAvailable(LastModifiedBy); LastModifiedBy; @UserName)</formula></code></field></par>
+<par def='7'><field type='datetime' kind='computed' name='LastModifiedDate'><code event='value'><formula>@If(@IsAvailable(LastModifiedDate); LastModifiedDate; @Now)</formula></code></field></par>
+<par def='7'><field type='text' kind='computed' name='StatusInquiryKey' description='Denormalised key rebuilt nightly by RebuildStatusInquiryIndex'>
+<code event='value'><formula>@UpperCase(DocumentNumber) + "|" + @UpperCase(DODAAC) + "|" + @UpperCase(UIC)</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+<item name='$Comment'><text>DD1348-6 requisition header. Line items are RequestLine responses. Do not rename fields: RequestsByStatus, StatusInquiry and the SSJS libraries reference them by name.</text></item>
+<item name='$FormUsers' names='true'><textlist><text>[TACOM]</text><text>[DLA]</text><text>[Vendor]</text><text>Army-Units-Requesters</text></textlist></item>
+<item name='$WebFlags'><text>H</text></item>
+<item name='$Info'><rawitemdata type='1'>gAAAAAAAAAAAAAAAAAAAAA==</rawitemdata></item>
+</form>

@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='RequestsByUnit' alias='ByUnit|vwUnit' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='true' onopengoto='lastopened' headers='beveled' opencollapsed='true'
+ bgcolor='white' altrowcolor='#f0f0f0' headerbgcolor='#c0c0c0' rowlinecount='1' headerlinecount='1'>
+<noteinfo noteid='13E' unid='B2C3D4E5F6A7B8C985258A1F00305C22' sequence='22'>
+<created><datetime>20040320T091500,00-05</datetime></created>
+<modified><datetime>20150710T142201,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT Form = "Request" &amp; !@IsAvailable($Conflict) &amp; !@IsAvailable($Archived)</formula></code>
+<column itemname='UIC' width='10' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='UIC'/>
+<code event='value'><formula>@If(@Trim(UIC) = ""; "(No UIC)"; @UpperCase(UIC))</formula></code>
+</column>
+<column itemname='UnitName' width='30' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Unit'/>
+<code event='value'><formula>@If(@Trim(UnitName) = ""; "(Unit not recorded)"; UnitName)</formula></code>
+</column>
+<column itemname='DocumentNumber' width='16' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Document Number'/>
+<code event='value'><formula>DocumentNumber</formula></code>
+</column>
+<column itemname='Status' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Status'/>
+<code event='value'><formula>Status</formula></code>
+</column>
+<column itemname='RequestType' width='14' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Type'/>
+<code event='value'><formula>RequestType</formula></code>
+</column>
+<column itemname='RequesterName' width='20' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Requester'/>
+<code event='value'><formula>@If(@Trim(RequesterRank) = ""; RequesterName; RequesterRank + " " + RequesterName)</formula></code>
+</column>
+<column itemname='EnteredDate' width='10' resizable='true' sort='descending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Entered'/>
+<code event='value'><formula>@Text(EnteredDate; "D0S0")</formula></code>
+</column>
+<column itemname='LineCount' width='5' resizable='true' align='right' totals='total'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Lines'/>
+<code event='value'><formula>LineCount</formula></code>
+</column>
+<column itemname='TotalValue' width='10' resizable='true' align='right' totals='total'>
+<font size='9pt' name='Arial'/>
+<numberformat format='currency' digits='2' punctuated='true' parens='false' percent='false'/>
+<columnheader title='Value'/>
+<code event='value'><formula>TotalValue</formula></code>
+</column>
+</view>

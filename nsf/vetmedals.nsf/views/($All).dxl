@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE view SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<view name='($All)' alias='All' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ showresponsehierarchy='false' showinmenu='false' onopengoto='lastopened' onrefresh='displayindicator'
+ headers='beveled' opencollapsed='false' showmargin='true' shrinkrows='false' extendlastcolumn='true'
+ unreadmarks='none' rowlinecount='1' headerlinecount='1' unreadcolor='black' bgcolor='white' altrowcolor='#f0f0f0'
+ headerbgcolor='#c0c0c0' boldunreadrows='false' evaluateactions='false' allownewdocuments='false'
+ nomenu='false' allowcustomizations='true'>
+<noteinfo noteid='162' unid='D9EAFB0C1D2E3F4A85258A1F00305D71' sequence='56'>
+<created><datetime>20040301T120500,00-05</datetime></created>
+<modified><datetime>20040301T120500,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<code event='selection'><formula>SELECT @All</formula></code>
+<column itemname='Form' width='16' resizable='true' sort='ascending' categorized='true' twisties='true'>
+<font size='9pt' style='bold' name='Arial'/>
+<columnheader title='Form'/>
+<code event='value'><formula>Form</formula></code>
+</column>
+<column itemname='Key' width='24' resizable='true' sort='ascending'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Key'/>
+<code event='value'><formula>@If(Form = &quot;AwardsCase&quot;; CaseNumber; Form = &quot;AwardLine&quot;; LineKey; Form = &quot;Requester&quot;; RequesterID; Form = &quot;EngravingJob&quot;; JobNumber; Form = &quot;ShipmentRecord&quot;; ShipmentNumber; Form = &quot;AuthorizationFile&quot;; FileName; Form = &quot;CaseNote&quot;; ParentCaseNumber; @Text(@DocumentUniqueID))</formula></code>
+</column>
+<column itemname='Modified' width='16' resizable='true'>
+<font size='9pt' name='Arial'/>
+<datetimeformat show='datetime' date='monthdayyear' time='hourminute' zone='never'/>
+<columnheader title='Modified'/>
+<code event='value'><formula>@Text(@Modified; &quot;D0S1&quot;)</formula></code>
+</column>
+<column itemname='UpdatedBy' width='20' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='Last Updated By'/>
+<code event='value'><formula>@Name([CN]; @Subset($UpdatedBy; -1))</formula></code>
+</column>
+<column itemname='UNID' width='34' resizable='true'>
+<font size='9pt' name='Arial'/>
+<columnheader title='UNID'/>
+<code event='value'><formula>@Text(@DocumentUniqueID)</formula></code>
+</column>
+<item name='$Comment'><text>Hidden administrative view of every document. Used by ArchiveClosedCases and the harness DXL export.</text></item>
+</view>

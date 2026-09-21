@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom"
+	pageTitle="Modify / Cancel Heraldry Request">
+	<!-- ModifyRequest.xsp?documentId=<unid>  - opens an existing Request. Without documentId shows a lookup box.
+	     Modification and cancellation are blocked once the request is released to a vendor (HAASStatus.isReleased). -->
+	<xp:this.resources>
+		<xp:script src="/HAASStatus.jss" clientSide="false" />
+		<xp:script src="/HAASRequest.jss" clientSide="false" />
+	</xp:this.resources>
+	<xp:this.data>
+		<xp:dominoDocument var="reqDoc" formName="Request" action="editDocument" computeWithForm="onsave"
+			documentId="#{javascript:param.documentId}" ignoreRequestParams="false"
+			rendered="#{javascript:param.documentId != null}" />
+	</xp:this.data>
+	<xp:this.beforePageLoad><![CDATA[#{javascript:
+if (param.documentId && !/^[0-9A-F]{32}$/i.test(param.documentId)) {
+	sessionScope.haasError = "Invalid or nonexistent document. (HTTP Web Server: Invalid URL Exception)";
+	context.redirectToPage("/ModifyRequest.xsp");
+}}]]></xp:this.beforePageLoad>
+	<xc:ccLayout pageName="Modify / Cancel Request" navSelection="modify">
+		<xp:this.facets>
+			<xp:panel xp:key="content">
+
+				<!-- Lookup box when no document is open -->
+				<xp:panel rendered="#{javascript:param.documentId == null}" styleClass="haasLookupBox">
+					<xp:label value="Enter the 14-character document number of the request to modify or cancel:" for="lookupDocNumber" />
+					<xp:br />
+					<xp:inputText id="lookupDocNumber" value="#{viewScope.lookupDocNumber}" maxlength="20" size="24" styleClass="haasInput" style="text-transform:uppercase" />
+					<xp:button value="Open Request" id="btnOpen" styleClass="haasButton">
+						<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+							<xp:this.action><![CDATA[#{javascript:
+var r = HAASStatus.lookup(viewScope.lookupDocNumber);
+if (r.error) { HAASRequest.fail(r.error); return; }
+context.redirectToPage("/ModifyRequest.xsp?documentId=" + r.unid);}]]></xp:this.action>
+						</xp:eventHandler>
+					</xp:button>
+				</xp:panel>
+
+				<!-- Document view / edit -->
+				<xp:panel rendered="#{javascript:param.documentId != null}">
+					<xp:panel styleClass="haasReleasedNotice" rendered="#{javascript:HAASStatus.isReleased(reqDoc.getDocument())}">
+						<xp:text escape="true" value="#{javascript:HAASStatus.MSG_RELEASED_NOMODIFY}" />
+					</xp:panel>
+
+					<xp:table styleClass="haasFormTable" border="1" cellpadding="3" cellspacing="0">
+						<xp:tr>
+							<xp:td styleClass="haasLabel">Document Number</xp:td>
+							<xp:td><xp:text escape="true" value="#{reqDoc.DocumentNumber}" styleClass="haasDocNumber" /></xp:td>
+							<xp:td styleClass="haasLabel">Status</xp:td>
+							<xp:td><xp:text escape="true" value="#{reqDoc.Status}" /></xp:td>
+						</xp:tr>
+						<xp:tr>
+							<xp:td styleClass="haasLabel">DODAAC / UIC</xp:td>
+							<xp:td><xp:text escape="true" value="#{reqDoc.DODAAC}" /> / <xp:text escape="true" value="#{reqDoc.UIC}" /></xp:td>
+							<xp:td styleClass="haasLabel">Entered</xp:td>
+							<xp:td><xp:text escape="true" value="#{reqDoc.EnteredDate}"><xp:this.converter><xp:convertDateTime type="both" dateStyle="short" timeStyle="short" /></xp:this.converter></xp:text></xp:td>
+						</xp:tr>
+						<xp:tr>
+							<xp:td styleClass="haasLabel">Unit</xp:td>
+							<xp:td colspan="3"><xp:inputText value="#{reqDoc.UnitName}" maxlength="120" size="60" styleClass="haasInput" readonly="#{javascript:HAASStatus.isReleased(reqDoc.getDocument())}" /></xp:td>
+						</xp:tr>
+						<xp:tr>
+							<xp:td styleClass="haasLabel">Type</xp:td>
+							<xp:td><xp:text escape="true" value="#{reqDoc.RequestType}" /></xp:td>
+							<xp:td styleClass="haasLabel">RPD</xp:td>
+							<xp:td>
+								<xp:comboBox value="#{reqDoc.RPD}" styleClass="haasSelect" disabled="#{javascript:HAASStatus.isReleased(reqDoc.getDocument())}">
+									<xp:selectItems><xp:this.value><![CDATA[#{javascript:HAASRequest.RPD_VALUES}]]></xp:this.value></xp:selectItems>
+								</xp:comboBox>
+							</xp:td>
+						</xp:tr>
+						<xp:tr>
+							<xp:td styleClass="haasLabel">Ship-To Address</xp:td>
+							<xp:td colspan="3"><xp:inputTextarea value="#{reqDoc.ShipToAddress}" rows="3" cols="60" styleClass="haasInput" readonly="#{javascript:HAASStatus.isReleased(reqDoc.getDocument())}" /></xp:td>
+						</xp:tr>
+						<xp:tr>
+							<xp:td styleClass="haasLabel">Requester</xp:td>
+							<xp:td colspan="3"><xp:text escape="true" value="#{javascript:reqDoc.getItemValueString('RequesterRank') + ' ' + reqDoc.getItemValueString('RequesterName') + ' - ' + reqDoc.getItemValueString('RequesterEmail')}" /></xp:td>
+						</xp:tr>
+						<xp:tr>
+							<xp:td styleClass="haasLabel">Vendor</xp:td>
+							<xp:td><xp:text escape="true" value="#{javascript:reqDoc.getItemValueString('VendorName') || reqDoc.getItemValueString('VendorKey')}" /></xp:td>
+							<xp:td styleClass="haasLabel">Released</xp:td>
+							<xp:td><xp:text escape="true" value="#{reqDoc.ReleasedDate}" /></xp:td>
+						</xp:tr>
+						<xp:tr>
+							<xp:td styleClass="haasLabel">Justification</xp:td>
+							<xp:td colspan="3"><xp:inputTextarea value="#{reqDoc.Justification}" rows="4" cols="80" styleClass="haasInput" readonly="#{javascript:HAASStatus.isReleased(reqDoc.getDocument())}" /></xp:td>
+						</xp:tr>
+					</xp:table>
+
+					<xp:label value="Line Items" styleClass="haasH2" />
+					<xp:dataTable id="tblLines" var="line" rows="50" styleClass="haasView" value="#{javascript:reqDoc.getDocument().getResponses()}">
+						<xp:column><xp:this.facets><xp:text xp:key="header" value="Line" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueString('LineDocNumber')}" /></xp:column>
+						<xp:column><xp:this.facets><xp:text xp:key="header" value="NSN / Exception" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueString('NSN') || line.getItemValueString('ExceptionData')}" /></xp:column>
+						<xp:column><xp:this.facets><xp:text xp:key="header" value="Description" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueString('ItemDescription')}" /></xp:column>
+						<xp:column styleClass="haasNum"><xp:this.facets><xp:text xp:key="header" value="Qty" /></xp:this.facets>
+							<xp:inputText id="lineQty" value="#{javascript:line.getItemValueInteger('Quantity')}" size="4" maxlength="6" styleClass="haasInput haasNum" readonly="#{javascript:HAASStatus.isReleased(reqDoc.getDocument())}" />
+							<xp:button id="btnUpdateLine" value="Update" styleClass="haasButton haasButtonSmall" rendered="#{javascript:!HAASStatus.isReleased(reqDoc.getDocument())}">
+								<xp:eventHandler event="onclick" submit="true" refreshMode="partial" refreshId="tblLines">
+									<xp:this.action><![CDATA[#{javascript:
+var r = HAASRequest.updateLineQuantity(reqDoc.getDocument(), line, getComponent('lineQty').getValue());
+if (r.error) { HAASRequest.fail(r.error); return; }
+HAASRequest.flash('Line ' + line.getItemValueString('LineNumber') + ' quantity updated; request total re-extended.');}]]></xp:this.action>
+								</xp:eventHandler>
+							</xp:button>
+						</xp:column>
+						<xp:column><xp:this.facets><xp:text xp:key="header" value="U/I" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueString('UnitOfIssue')}" /></xp:column>
+						<xp:column styleClass="haasNum"><xp:this.facets><xp:text xp:key="header" value="Ext. Price" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueDouble('ExtendedPrice')}"><xp:this.converter><xp:convertNumber type="currency" currencySymbol="$" /></xp:this.converter></xp:text></xp:column>
+						<xp:column><xp:this.facets><xp:text xp:key="header" value="Line Status" /></xp:this.facets><xp:text escape="true" value="#{javascript:line.getItemValueString('LineStatus')}" /></xp:column>
+					</xp:dataTable>
+
+					<xp:label value="Status History" styleClass="haasH2" />
+					<xp:repeat var="h" value="#{javascript:reqDoc.getDocument().getItemValue('StatusHistory')}">
+						<xp:text escape="true" value="#{javascript:h}" styleClass="haasHistoryLine" /><xp:br />
+					</xp:repeat>
+
+					<xp:panel styleClass="haasButtonBar">
+						<xp:button value="Save Changes" id="btnSave" styleClass="haasButton" rendered="#{javascript:!HAASStatus.isReleased(reqDoc.getDocument())}">
+							<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+								<xp:this.action><![CDATA[#{javascript:
+var doc = reqDoc.getDocument(true);
+if (HAASStatus.isReleased(doc)) { HAASRequest.fail(HAASStatus.MSG_RELEASED_NOMODIFY); return; }
+var h = { DODAAC: doc.getItemValueString("DODAAC"), UIC: doc.getItemValueString("UIC"), RPD: reqDoc.getItemValueString("RPD"),
+	RequestType: doc.getItemValueString("RequestType"), UnitName: reqDoc.getItemValueString("UnitName"),
+	RequesterName: doc.getItemValueString("RequesterName"), RequesterEmail: doc.getItemValueString("RequesterEmail"),
+	ShipToAddress: reqDoc.getItemValueString("ShipToAddress"), Justification: reqDoc.getItemValueString("Justification") };
+var errors = HAASRequest.validateHeader(h);
+if (errors.length) { for (var i = 0; i < errors.length; i++) { facesContext.addMessage(null, new javax.faces.application.FacesMessage(javax.faces.application.FacesMessage.SEVERITY_ERROR, errors[i], errors[i])); } return false; }
+var hist = doc.getFirstItem("StatusHistory");
+hist.appendToTextList(I18n.toString(new Date(), "MM/dd/yyyy hh:mm a") + " modified by " + context.getUser().getCommonName());
+reqDoc.replaceItemValue("LastModifiedBy", context.getUser().getDistinguishedName());
+reqDoc.replaceItemValue("LastModifiedDate", session.createDateTime(new Date()));
+reqDoc.save();
+HAASRequest.flash("Request " + doc.getItemValueString("DocumentNumber") + " has been updated.");
+context.redirectToPage("/ModifyRequest.xsp?documentId=" + doc.getUniversalID());}]]></xp:this.action>
+							</xp:eventHandler>
+						</xp:button>
+						<xp:button value="Cancel Request" id="btnCancelReq" styleClass="haasButton haasButtonDanger" rendered="#{javascript:!HAASStatus.isReleased(reqDoc.getDocument())}">
+							<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+								<xp:this.script><![CDATA[return confirm("Cancel this request and all of its line items? This cannot be undone.");]]></xp:this.script>
+								<xp:this.action><![CDATA[#{javascript:
+var doc = reqDoc.getDocument(true);
+if (HAASStatus.isReleased(doc)) { HAASRequest.fail(HAASStatus.MSG_RELEASED_NOMODIFY); return; }
+doc.replaceItemValue("CancelReason", "Cancelled by requester via web");
+var agent = database.getAgent("CancelRequest");
+agent.run(doc.getNoteID());
+HAASRequest.flash("Request " + doc.getItemValueString("DocumentNumber") + " has been cancelled.");
+context.redirectToPage("/ModifyRequest.xsp?documentId=" + doc.getUniversalID());}]]></xp:this.action>
+							</xp:eventHandler>
+						</xp:button>
+						<xp:button value="Release to Vendor" id="btnRelease" styleClass="haasButton" rendered="#{javascript:HAASStatus.hasRole('[TACOM]') &amp;&amp; !HAASStatus.isReleased(reqDoc.getDocument())}">
+							<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+								<xp:this.action><![CDATA[#{javascript:
+var doc = reqDoc.getDocument(true);
+var agent = database.getAgent("ReleaseToVendor");
+agent.run(doc.getNoteID());
+context.redirectToPage("/ModifyRequest.xsp?documentId=" + doc.getUniversalID());}]]></xp:this.action>
+							</xp:eventHandler>
+						</xp:button>
+						<xp:button value="Close" id="btnClose" styleClass="haasButton">
+							<xp:eventHandler event="onclick" submit="true" refreshMode="complete" immediate="true">
+								<xp:this.action><xp:openPage name="/HeraldryHome.xsp" /></xp:this.action>
+							</xp:eventHandler>
+						</xp:button>
+					</xp:panel>
+				</xp:panel>
+			</xp:panel>
+		</xp:this.facets>
+	</xc:ccLayout>
+</xp:view>

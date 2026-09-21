@@ -1,0 +1,74 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+'   Agent: RebuildStatusInquiryIndex
+'   Trigger: scheduled, daily 02:30 on HAAS-APP01
+'   Purpose: recompute the denormalized StatusInquiryKey on every Request / SESFlagRequest and rebuild the
+'            StatusInquiry view index. Added 2008 after the status inquiry page began timing out; the multi-value
+'            first column makes the index expensive so we refresh it off-hours instead of on demand.
+Option Public
+Option Declare
+Use "HAASCommon"
+
+'++LotusScript Development Environment:2:2:Initialize:1:10
+Sub Initialize
+	On Error GoTo ErrHandler
+	Dim s As New NotesSession
+	Dim db As NotesDatabase
+	Dim allView As NotesView
+	Dim inqView As NotesView
+	Dim nav As NotesViewNavigator
+	Dim entry As NotesViewEntry
+	Dim doc As NotesDocument
+	Dim key As String, existing As String
+	Dim updated As Long, examined As Long, orphans As Long
+	Dim t0 As Single
+
+	t0 = Timer
+	Set db = s.CurrentDatabase
+	Set allView = db.GetView("($All)")
+	allView.AutoUpdate = False
+	Set nav = allView.CreateViewNav
+	Set entry = nav.GetFirstDocument
+	While Not entry Is Nothing
+		Set doc = entry.Document
+		examined = examined + 1
+		Select Case SafeGetText(doc, "Form")
+		Case "Request"
+			key = UCase(SafeGetText(doc, "DocumentNumber")) & "|" & UCase(SafeGetText(doc, "DODAAC")) & "|" & UCase(SafeGetText(doc, "UIC"))
+			existing = SafeGetText(doc, "StatusInquiryKey")
+			If key <> existing Then
+				Call doc.ReplaceItemValue("StatusInquiryKey", key)
+				Call doc.ReplaceItemValue("StatusNormalized", NormalizeStatus(SafeGetText(doc, "Status")))
+				Call doc.Save(True, False, True)
+				updated = updated + 1
+			End If
+		Case "SESFlagRequest"
+			key = UCase(SafeGetText(doc, "SESFlagNumber")) & "|" & UCase(SafeGetText(doc, "DODAAC")) & "|" & UCase(SafeGetText(doc, "UIC"))
+			If key <> SafeGetText(doc, "StatusInquiryKey") Then
+				Call doc.ReplaceItemValue("StatusInquiryKey", key)
+				Call doc.Save(True, False, True)
+				updated = updated + 1
+			End If
+		Case "RequestLine"
+			' Orphan detection only - we do not delete; the migration will decide.
+			If doc.IsResponse Then
+				If db.GetDocumentByUNID(doc.ParentDocumentUNID) Is Nothing Then orphans = orphans + 1
+			Else
+				orphans = orphans + 1
+			End If
+		End Select
+		Set entry = nav.GetNextDocument(entry)
+	Wend
+
+	Set inqView = db.GetView("StatusInquiry")
+	Call inqView.Refresh
+	Call LogAgent("RebuildStatusInquiryIndex", "Examined " & examined & ", updated " & updated & ", orphan RequestLines " & orphans & ", " & Format$(Timer - t0, "0.0") & "s")
+	Exit Sub
+ErrHandler:
+	If Err = 4005 Then
+		' document deleted while we were iterating (view navigator race) - skip it
+		Call LogAgent("RebuildStatusInquiryIndex", "Skipped deleted note during rebuild")
+		Resume Next
+	End If
+	Call LogAgent("RebuildStatusInquiryIndex", "Error " & Err & " at line " & Erl & ": " & Error$)
+	Exit Sub
+End Sub

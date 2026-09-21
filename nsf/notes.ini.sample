@@ -1,0 +1,87 @@
+; notes.ini.sample - HAAS-APP01/TACOM (HCL Domino 12.0.2 FP2, Windows Server 2019)
+; SYNTHETIC sample. Server-specific values (hostnames, ports, paths) are illustrative only.
+; Lines beginning with ";" are comments and are not present in the real file.
+[Notes]
+Directory=D:\Domino\Data
+KitType=2
+ServerName=CN=HAAS-APP01/O=TACOM
+Domain=TACOM
+ServerTasks=Update,Replica,Router,AMgr,AdminP,HTTP,Sched,CalConn,RnRMgr,Event,DAOSMgr
+ServerTasksAt1=Catalog,Design
+ServerTasksAt2=UpdAll,Object Info -Full
+ServerTasksAt3=Object Collect
+ServerTasksAt5=Statlog
+ServerTasksAt1=Compact -B haas\archive
+TRANSLOG_AutoFixup=1
+TRANSLOG_UseAll=0
+TRANSLOG_Style=0
+TRANSLOG_Performance=2
+TRANSLOG_Status=1
+TRANSLOG_Path=E:\translog
+DAOS_ENABLED=1
+DAOS_MIN_OBJECT_SIZE=65536
+DAOS_BASE_PATH=E:\DAOS
+NSF_BUFFER_POOL_SIZE_MB=1024
+Create_R12_Databases=1
+FTG_USE_SYS_MEMORY=1
+Log_Sessions=1
+Log_Replication=1
+Log_AgentManager=1
+; --- Agent Manager -------------------------------------------------------
+; Nightly agents (NightlyAging 02:00, ImportAuthorizationFile 04:15, ArchiveClosedCases Sun 01:00)
+; run in the night-time window. The 60-min max was raised from 30 in 2017 when NightlyAging
+; started timing out on 3,000+ open cases (see vetmedals.nsf/README-design.md wart #12).
+AMgr_DocUpdateAgentMinInterval=15
+AMgr_DocUpdateEventDelay=5
+AMgr_NewMailAgentMinInterval=0
+AMgr_NewMailEventDelay=1
+AMgr_WeekendDays=1,7
+AMgr_UntriggeredMailInterval=60
+DailyDayStartTime=08:00 AM
+DailyDayEndTime=08:00 PM
+DailyNightStartTime=08:00 PM
+DailyNightEndTime=08:00 AM
+AMgr_DailyMaxRunTime=30
+AMgr_NightMaxRunTime=60
+AMgr_SchedulingInterval=1
+; Sign agents with the server ID so scheduled agents run under HAAS-APP01 (Readers fields include LocalDomainServers)
+; --- HTTP / XPages ---------------------------------------------------------
+HTTPEnableConnectorHeaders=1
+HTTPDisableJVM=0
+HTTPJVMMaxHeapSize=1024M
+HTTPJVMMaxHeapSizeSet=1
+HTTPAllowDecodedUrlPercent=1
+HTTP_QUERY_STRING_MAX_LENGTH=2048
+HTTPDefaultCharSet=UTF-8
+; XPages persistence (matches xsp.properties xsp.persistence.mode=file)
+XPagesPreload=1
+XPagesPreloadDB=haas/heraldry.nsf/HeraldryHome.xsp,haas/vetmedals.nsf/CasesByStage
+JavaUserClassesExt=HAASCLASSES
+HAASCLASSES=D:\Domino\jvm\lib\ext\haas-xsp-1.4.2.jar
+; --- Web SSO / EAMS-A ----------------------------------------------------
+; EAMS-A SAML is configured in the Web SSO Configuration document (IdP catalog idpcat.nsf).
+; The DOMRELAYSTATE cookie carries the post-login redirect. Nothing here is the real configuration.
+SAML_IDP_CATALOG=idpcat.nsf
+SSO_LTPA_TOKEN_NAME=LtpaToken2
+; --- Mail -----------------------------------------------------------------
+MailServer=CN=HAAS-APP01/O=TACOM
+SMTPMTA_ENABLED=1
+RouterAllowConcurrentXFERToAll=1
+SMTPClientHostName=haas-app01.example.mil
+; Outbound veteran/NOK status mail relays through the enterprise SMTP gateway
+SMTPRelayHost=smtp-relay.example.mil
+; --- Misc -----------------------------------------------------------------
+NoMsgCache=1
+Passthru_LogLevel=0
+ServerNoReplRequests=1
+ADMINP_INTERVAL=60
+Server_MaxSessions=2000
+Server_Session_Timeout=30
+Server_Restricted=0
+KeyFilename=D:\Domino\Data\haas-app01.id
+CertificateExpChecked=haas-app01.id 09/01/2026
+DEBUG_THREADID=1
+; HAAS application-specific (read by HAASCommon.lss via s.GetEnvironmentString)
+$HAAS_LOG_DB=haas\haaslog.nsf
+$HAAS_ARCHIVE_ROOT=haas\archive
+$HAAS_HRC_SHARE=\\haas-app01\hrc_transfer\inbound

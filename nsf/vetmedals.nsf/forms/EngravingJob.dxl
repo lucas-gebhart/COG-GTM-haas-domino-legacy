@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='EngravingJob' alias='frmEngraving' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305D71' designerversion='8.5.3' publicaccess='false'
+ hide='web' bgcolor='white' noreplace='false' renderpassthrough='true'>
+<noteinfo noteid='12E' unid='6FBC3085BADC8E4785258A1F00305D71' sequence='39'>
+<created><datetime>20080115T100000,00-05</datetime></created>
+<modified><datetime>20210823T133005,00-04</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name></updatedby>
+<!-- EngravingJob: work order for the engraving shop. One job per case (all engravable lines batched).
+     Created by the (AdvanceStage) agent when a case moves Authorized -> Engraving. Not a response document
+     (the shop wanted a flat view) - linked by CaseNumber only, so orphan jobs exist for deleted cases. -->
+<code event='windowtitle'><formula>"Engraving Job " + JobNumber + " - " + VeteranName + " [" + JobStatus + "]"</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'><code event='hidewhen'><formula>!@IsMember("[Engraver]":"[TACOM]":"[Admin]"; @UserRoles)</formula></code><code event='click'><formula>@Command([EditDocument])</formula></code></action>
+<action title='Start Job' icon='14'><code event='hidewhen'><formula>JobStatus != "Queued"</formula></code><code event='click'><formula>@Do(FIELD JobStatus := "In Progress"; FIELD StartedDate := @Now; FIELD Engraver := @UserName; @Command([FileSave]))</formula></code></action>
+<action title='Complete Job' icon='14'><code event='hidewhen'><formula>JobStatus != "In Progress"</formula></code>
+<code event='click'><formula>@If(@Trim(@Implode(ProofChecked; "")) = ""; @Return(@Prompt([Ok]; "Engraving"; "Confirm the proof check before completing the job.")); @Do(FIELD JobStatus := "Complete"; FIELD CompletedDate := @Now; @Command([FileSave]); @Command([ToolsRunMacro]; "(AdvanceStage)")))</formula></code></action>
+<action title='Open Case' icon='6'><code event='click'><formula>@Command([OpenView]; "CasesByStage"; CaseNumber)</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='12pt' style='bold' name='Verdana' color='navy'/>Engraving Work Order</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='30%'/><tablecolumn width='70%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Job Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='computedwhencomposed' name='JobNumber'><code event='value'><formula>@If(JobNumber != ""; JobNumber; "ENG-" + @Text(@Year(@Now)) + "-" + @Right("00000" + @Text(@GetProfileField("Profile"; "NextEngravingSerial")); 5))</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Case Number</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='CaseNumber'><code event='inputvalidation'><formula>@If(!@Matches(CaseNumber; "VMA-{0-9}{0-9}{0-9}{0-9}-{0-9}{0-9}{0-9}{0-9}{0-9}{0-9}"); @Failure("Case number must be VMA-YYYY-NNNNNN."); @Success)</formula></code></field><run> </run><field type='text' kind='editable' name='VeteranName'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Job Status</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='JobStatus'><keywords ui='combobox' allownew='false'><textlist><text>Queued</text><text>In Progress</text><text>Rework</text><text>Complete</text><text>Cancelled</text></textlist></keywords><code event='defaultvalue'><formula>"Queued"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Priority</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Priority'><keywords ui='radiobutton' columns='3'><textlist><text>Routine</text><text>Expedite</text><text>Congressional</text></textlist></keywords><code event='defaultvalue'><formula>"Routine"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Items to Engrave</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Items' allowmultivalues='true' listdisplayseparator='newline' listinputseparators='newline' description='One entry per AwardLine: "Bronze Star Medal :: JOHN Q PUBLIC"'>
+<code event='inputvalidation'><formula>@If(@Elements(Items) = 0; @Failure("At least one item to engrave is required."); @Elements(Items) &gt; 12; @Failure("A job may not have more than 12 items; split the job."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Engraving Text (verify)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='EngravingText'><code event='inputtranslation'><formula>@UpperCase(@Trim(EngravingText))</formula></code><code event='inputvalidation'><formula>@If(@Length(EngravingText) &gt; 40; @Failure("Engraving text may not exceed 40 characters."); @Matches(EngravingText; "*{a-z}*"); @Failure("Engraving text must be upper case."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Font / Machine</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Font'><keywords ui='combobox' allownew='false'><textlist><text>Block</text><text>Script</text><text>Roman</text></textlist></keywords><code event='defaultvalue'><formula>"Block"</formula></code></field><run> </run><field type='keyword' kind='editable' name='Machine'><keywords ui='combobox' allownew='true'><textlist><text>Laser-1</text><text>Laser-2</text><text>Rotary-A</text><text>Hand</text></textlist></keywords></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Proof Checked</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='ProofChecked' allowmultivalues='true'><keywords ui='checkbox' columns='1'><textlist><text>Spelling verified against authorization record</text><text>Award matches line item</text></textlist></keywords></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Dates</run></par></tablecell>
+<tablecell><par def='1'><run>queued </run><field type='datetime' kind='computedwhencomposed' name='QueuedDate'><datetimeformat show='datetime' date='monthdayyear' time='hourminute'/><code event='value'><formula>@Now</formula></code></field><run> started </run><field type='datetime' kind='editable' name='StartedDate'><datetimeformat show='datetime' date='monthdayyear' time='hourminute'/></field><run> completed </run><field type='datetime' kind='editable' name='CompletedDate'><datetimeformat show='datetime' date='monthdayyear' time='hourminute'/></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Engraver</run></par></tablecell>
+<tablecell><par def='1'><field type='names' kind='editable' name='Engraver'/><run> rework count </run><field type='number' kind='editable' name='ReworkCount'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/><code event='defaultvalue'><formula>0</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Notes</run></par></tablecell>
+<tablecell><par def='1'><field type='richtext' kind='editable' name='Notes'/></par></tablecell></tablerow>
+</table>
+<pardef id='2' hide='read edit print preview'/>
+<par def='2'><field type='names' kind='computed' name='DocReaders' readers='true' allowmultivalues='true'><code event='value'><formula>"[TACOM]":"[CSR]":"[Engraver]":"[Assembler]":"[Admin]":"[ReadOnlyAudit]":"LocalDomainServers"</formula></code></field></par>
+<par def='2'><field type='number' kind='computed' name='DaysInQueue'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/><code event='value'><formula>@Integer((@If(@Text(CompletedDate) != ""; CompletedDate; @Now) - QueuedDate) / 86400)</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+</form>

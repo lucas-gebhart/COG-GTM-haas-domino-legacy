@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xp:view xmlns:xp="http://www.ibm.com/xsp/core" xmlns:xc="http://www.ibm.com/xsp/custom"
+	pageTitle="Heraldry Automation System - Sign In">
+	<!--
+	  Login.xsp - STUB.
+	  In production the Domino HTTP task is fronted by Army EAMS-A (Enterprise Access Management Service - Army),
+	  a SAML 2.0 identity provider. Domino is configured as a SAML service provider (idpcat.nsf); the browser is
+	  redirected to the EAMS-A IdP, authenticates with CAC/PIV, and returns a SAML assertion. Domino then issues
+	  its own session cookie (DomAuthSessId or LtpaToken) and keeps the SAML RelayState in the DOMRELAYSTATE cookie
+	  so the user lands back on the XPage they asked for. Names are mapped to the Domino Directory (names.nsf)
+	  via the person document's "SAML Subject" / e-mail address.
+
+	  Nothing about the real IdP configuration is represented here. This page is the fallback rendered when
+	  ?Login is hit directly (e.g. vendors using Domino name-and-password over HTTPS, who are not EAMS-A users).
+	-->
+	<xc:ccLayout pageName="Sign In" showNav="false">
+		<xp:this.facets>
+			<xp:panel xp:key="content">
+				<xp:panel styleClass="haasLoginBox">
+					<xp:label value="Sign In" styleClass="haasH1" />
+					<xp:panel styleClass="haasNotice">
+						<xp:text escape="false"><xp:this.value><![CDATA[<b>Army users:</b> access is through EAMS-A single sign-on. If you were not redirected automatically, <a href="/names.nsf?Login&amp;RedirectTo=/heraldry.nsf/HeraldryHome.xsp">click here</a> to start SAML authentication with your CAC.<br/><br/>
+<b>Vendors and automation system users:</b> sign in below with the Domino user name and Internet password issued by the TACOM Clothing &amp; Heraldry PSID administrator.]]></xp:this.value></xp:text>
+					</xp:panel>
+					<xp:table border="0" cellpadding="3" cellspacing="0" styleClass="haasFormTable">
+						<xp:tr><xp:td styleClass="haasLabel"><xp:label value="User name" for="Username" /></xp:td><xp:td><xp:inputText id="Username" value="#{viewScope.Username}" maxlength="120" size="30" styleClass="haasInput" /></xp:td></xp:tr>
+						<xp:tr><xp:td styleClass="haasLabel"><xp:label value="Password" for="Password" /></xp:td><xp:td><xp:inputText id="Password" value="#{viewScope.Password}" password="true" maxlength="128" size="30" styleClass="haasInput" /></xp:td></xp:tr>
+					</xp:table>
+					<xp:panel styleClass="haasButtonBar">
+						<xp:button value="Sign In" id="btnSignIn" styleClass="haasButton">
+							<xp:eventHandler event="onclick" submit="true" refreshMode="complete">
+								<!-- Posts to the Domino session-authentication endpoint; the XPage never sees the password. -->
+								<xp:this.script><![CDATA[document.forms[0].action = "/names.nsf?Login"; return true;]]></xp:this.script>
+							</xp:eventHandler>
+						</xp:button>
+					</xp:panel>
+					<xp:text escape="true" styleClass="haasFouo" value="You are accessing a U.S. Government (USG) Information System (IS) that is provided for USG-authorized use only. By using this IS you consent to monitoring." />
+				</xp:panel>
+			</xp:panel>
+		</xp:this.facets>
+	</xc:ccLayout>
+</xp:view>

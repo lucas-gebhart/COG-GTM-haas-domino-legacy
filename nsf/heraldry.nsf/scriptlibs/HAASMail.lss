@@ -1,0 +1,151 @@
+'++LotusScript Development Environment:2:5:(Options):0:74
+'   HAASMail - status notification mail built as NotesDocument memos with NotesRichTextItem bodies.
+Option Public
+Option Declare
+Use "HAASCommon"
+
+'++LotusScript Development Environment:2:5:(Forward):0:1
+Declare Sub SendStatusNotification(reqDoc As NotesDocument, newStatus As String)
+Declare Sub SendVendorRelease(reqDoc As NotesDocument, vendorDoc As NotesDocument)
+Declare Sub SendSESApprovalMail(sesDoc As NotesDocument)
+Declare Function BuildDocLink(doc As NotesDocument) As String
+Declare Function MailEnabled(db As NotesDatabase) As Boolean
+
+'++LotusScript Development Environment:2:5:(Declarations):0:10
+Const MAIL_FORM = "Memo"
+Const WEB_BASE = "https://heraldry.example.mil/haas/heraldry.nsf/"
+
+'++LotusScript Development Environment:2:1:MailEnabled:1:8
+Function MailEnabled(db As NotesDatabase) As Boolean
+	MailEnabled = (UCase(GetProfileText(db, "SendStatusMail", "Yes")) = "YES")
+End Function
+
+'++LotusScript Development Environment:2:1:BuildDocLink:1:8
+Function BuildDocLink(doc As NotesDocument) As String
+	BuildDocLink = WEB_BASE & "0/" & doc.UniversalID & "?OpenDocument"
+End Function
+
+'++LotusScript Development Environment:2:2:SendStatusNotification:1:8
+Sub SendStatusNotification(reqDoc As NotesDocument, newStatus As String)
+	On Error GoTo ErrHandler
+	Dim s As New NotesSession
+	Dim db As NotesDatabase
+	Dim memo As NotesDocument
+	Dim body As NotesRichTextItem
+	Dim style As NotesRichTextStyle
+	Dim recips(0) As String
+	Set db = reqDoc.ParentDatabase
+	If Not MailEnabled(db) Then Exit Sub
+	If Trim(SafeGetText(reqDoc, "RequesterEmail")) = "" Then
+		Call LogAgent("HAASMail", "No RequesterEmail on " & SafeGetText(reqDoc, "DocumentNumber") & "; notification skipped")
+		Exit Sub
+	End If
+	recips(0) = SafeGetText(reqDoc, "RequesterEmail")
+
+	Set memo = db.CreateDocument
+	Call memo.ReplaceItemValue("Form", MAIL_FORM)
+	Call memo.ReplaceItemValue("SendTo", recips)
+	Call memo.ReplaceItemValue("CopyTo", GetProfileValue(db, "MailCC"))
+	Call memo.ReplaceItemValue("Principal", GetProfileText(db, "MailFrom", "Heraldry Automation System"))
+	Call memo.ReplaceItemValue("Subject", "HAAS status change: " & SafeGetText(reqDoc, "DocumentNumber") & " is now " & newStatus)
+
+	Set body = New NotesRichTextItem(memo, "Body")
+	Set style = s.CreateRichTextStyle
+	style.Bold = True
+	Call body.AppendStyle(style)
+	Call body.AppendText("Heraldry Automation System - Request Status Notification")
+	style.Bold = False
+	Call body.AppendStyle(style)
+	Call body.AddNewLine(2)
+	Call body.AppendText("Document Number: " & SafeGetText(reqDoc, "DocumentNumber"))
+	Call body.AddNewLine(1)
+	Call body.AppendText("Unit: " & SafeGetText(reqDoc, "UnitName") & " (UIC " & SafeGetText(reqDoc, "UIC") & ", DODAAC " & SafeGetText(reqDoc, "DODAAC") & ")")
+	Call body.AddNewLine(1)
+	Call body.AppendText("New Status: " & newStatus)
+	Call body.AddNewLine(1)
+	If newStatus = STATUS_RELEASED Then
+		Call body.AppendText("Your request has been released to " & SafeGetText(reqDoc, "VendorName") & ". Estimated ship date: " & SafeGetText(reqDoc, "EstimatedShipDate") & ".")
+		Call body.AddNewLine(1)
+		Call body.AppendText("NOTE: Requests cannot be modified or cancelled after release to the vendor.")
+	ElseIf newStatus = STATUS_SHIPPED Then
+		Call body.AppendText("Tracking: " & SafeGetText(reqDoc, "TrackingNumber"))
+	End If
+	Call body.AddNewLine(2)
+	Call body.AppendText("Open the request: ")
+	Call body.AppendDocLink(reqDoc, "Open in Notes")
+	Call body.AddNewLine(1)
+	Call body.AppendText(BuildDocLink(reqDoc))
+	Call body.AddNewLine(2)
+	Call body.AppendText(GetProfileText(db, "HelpDeskText", ""))
+	Call body.AddNewLine(2)
+	Call body.AppendText("This is an automated message. Do not reply.")
+
+	Call memo.Send(False)
+	Call LogAgent("HAASMail", "Status mail sent for " & SafeGetText(reqDoc, "DocumentNumber") & " -> " & newStatus)
+	Exit Sub
+ErrHandler:
+	Call LogAgent("HAASMail", "Error " & Err & " line " & Erl & ": " & Error$)
+	Exit Sub
+End Sub
+
+'++LotusScript Development Environment:2:2:SendVendorRelease:1:8
+Sub SendVendorRelease(reqDoc As NotesDocument, vendorDoc As NotesDocument)
+	On Error GoTo ErrHandler
+	Dim db As NotesDatabase
+	Dim memo As NotesDocument
+	Dim body As NotesRichTextItem
+	Dim lines As NotesDocumentCollection
+	Dim line As NotesDocument
+	Set db = reqDoc.ParentDatabase
+	If vendorDoc Is Nothing Then
+		Call LogAgent("HAASMail", "Vendor document missing for " & SafeGetText(reqDoc, "VendorKey") & "; release mail not sent")
+		Exit Sub
+	End If
+	Set memo = db.CreateDocument
+	Call memo.ReplaceItemValue("Form", MAIL_FORM)
+	Call memo.ReplaceItemValue("SendTo", vendorDoc.GetItemValue("Email"))
+	Call memo.ReplaceItemValue("CopyTo", vendorDoc.GetItemValue("VendorUsers"))
+	Call memo.ReplaceItemValue("Principal", GetProfileText(db, "MailFrom", "Heraldry Automation System"))
+	Call memo.ReplaceItemValue("Subject", "Heraldry requisition released: " & SafeGetText(reqDoc, "DocumentNumber") & " (RPD " & SafeGetText(reqDoc, "RPD") & ")")
+	Set body = New NotesRichTextItem(memo, "Body")
+	Call body.AppendText("The following DD1348-6 requisition has been released to " & SafeGetText(vendorDoc, "VendorName") & " under contract " & SafeGetText(vendorDoc, "ContractNumber") & ".")
+	Call body.AddNewLine(2)
+	Set lines = reqDoc.Responses
+	Set line = lines.GetFirstDocument
+	While Not line Is Nothing
+		Call body.AppendText("  " & SafeGetText(line, "LineDocNumber") & "  " & SafeGetText(line, "Quantity") & " " & SafeGetText(line, "UnitOfIssue") & "  " & SafeGetText(line, "ItemDescription"))
+		If Trim(SafeGetText(line, "ExceptionData")) <> "" Then Call body.AppendText("  [" & SafeGetText(line, "ExceptionData") & "]")
+		Call body.AddNewLine(1)
+		Set line = lines.GetNextDocument(line)
+	Wend
+	Call body.AddNewLine(1)
+	Call body.AppendText("Ship to: " & Join(reqDoc.GetItemValue("ShipToAddress"), ", "))
+	Call body.AddNewLine(1)
+	Call body.AppendText("Work queue: " & WEB_BASE & "VendorQueue.xsp?vendor=" & SafeGetText(reqDoc, "VendorKey"))
+	Call memo.Send(False)
+	Exit Sub
+ErrHandler:
+	Call LogAgent("HAASMail", "SendVendorRelease error " & Err & ": " & Error$)
+	Exit Sub
+End Sub
+
+'++LotusScript Development Environment:2:2:SendSESApprovalMail:1:8
+Sub SendSESApprovalMail(sesDoc As NotesDocument)
+	On Error GoTo ErrHandler
+	Dim db As NotesDatabase
+	Dim memo As NotesDocument
+	Dim body As NotesRichTextItem
+	Set db = sesDoc.ParentDatabase
+	If Not MailEnabled(db) Then Exit Sub
+	Set memo = db.CreateDocument
+	Call memo.ReplaceItemValue("Form", MAIL_FORM)
+	Call memo.ReplaceItemValue("SendTo", sesDoc.GetItemValue("RequesterEmail"))
+	Call memo.ReplaceItemValue("Subject", "SES flag request " & SafeGetText(sesDoc, "SESFlagNumber") & " approved")
+	Set body = New NotesRichTextItem(memo, "Body")
+	Call body.AppendText("The SES positional color request for " & SafeGetText(sesDoc, "ExecutiveName") & " has been approved by " & SafeGetText(sesDoc, "ApprovedBy") & " and will be released to the vendor.")
+	Call memo.Send(False)
+	Exit Sub
+ErrHandler:
+	Call LogAgent("HAASMail", "SendSESApprovalMail error " & Err & ": " & Error$)
+	Exit Sub
+End Sub

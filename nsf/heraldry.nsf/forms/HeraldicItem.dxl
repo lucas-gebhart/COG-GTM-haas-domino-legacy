@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE form SYSTEM 'xmlschemas/domino_12_0.dtd'>
+<form name='HeraldicItem' alias='frmItem|Item' xmlns='http://www.lotus.com/dxl' version='12.0'
+ maintenanceversion='2.0' replicaid='C1258A1F00305C22' designerversion='8.5.3' publicaccess='false'
+ hide='notes' bgcolor='white' noreplace='false' renderpassthrough='true'>
+<noteinfo noteid='126' unid='7A2F5B8C1E9D4F3B85258A1F00305C22' sequence='41'>
+<created><datetime>20040315T091500,00-05</datetime></created>
+<modified><datetime>20200108T110233,00-05</datetime></modified>
+</noteinfo>
+<updatedby><name>CN=Domino Developer/O=HAAS</name><name>CN=Marlene Okafor/OU=CHPSID/O=TACOM</name></updatedby>
+<code event='windowtitle'><formula>StockNumber + " " + ItemName</formula></code>
+<actionbar bgcolor='system' bordercolor='black'>
+<action title='Save &amp; Close' icon='5' hide='read preview'><code event='click'><formula>@If(@Command([FileSave]); @Command([FileCloseWindow]); "")</formula></code></action>
+<action title='Edit' icon='5' hide='edit preview'><code event='hidewhen'><formula>!@IsMember("[TACOM]":"[Admin]"; @UserRoles)</formula></code><code event='click'><formula>@Command([EditDocument])</formula></code></action>
+</actionbar>
+<body><richtext>
+<pardef id='1'/>
+<par def='1'><run><font size='14pt' style='bold' name='Verdana' color='navy'/>Heraldic Item Catalog Entry</run></par>
+<par def='1'><run><font size='8pt' name='Arial' color='gray'/>Items authorized under AR 840-10 (Flags, Guidons, Streamers, Tabards, and Automobile and Aircraft Plates). Stock numbers use FSC 8345 (flags and pennants) or FSC 8455 (badges and insignia).</run></par>
+<table widthtype='fitmargins' refwidth='6.5in' cellbordercolor='#c0c0c0' colorstyle='solid' bgcolor='#f4f4f4'>
+<tablecolumn width='32%'/><tablecolumn width='68%'/>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Stock Number (key)</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='StockNumber'>
+<code event='inputtranslation'><formula>@Trim(StockNumber)</formula></code>
+<code event='inputvalidation'><formula>@If(!@Matches(StockNumber; "{0-9}{0-9}{0-9}{0-9}-{0-9}{0-9}-{0-9}{0-9}{0-9}-{0-9}{0-9}{0-9}{0-9}"); @Failure("Stock number must be in NSN format 9999-99-999-9999."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Item Name</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='ItemName'><code event='inputvalidation'><formula>@If(@Trim(ItemName) = ""; @Failure("Item name is required."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Category</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Category'>
+<keywords ui='combobox' columns='1'><textlist><text>Guidon</text><text>Distinguishing Flag</text><text>Organizational Colors</text><text>Streamer</text><text>Positional Color</text><text>Automobile Flag</text><text>Insignia</text><text>Appurtenance</text></textlist></keywords>
+<code event='inputvalidation'><formula>@If(@Trim(Category) = ""; @Failure("Category is required."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Description</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Description'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Branch / Applicability</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Branch' description='Infantry, Armor, Field Artillery, ... or All'/></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Unit of Issue</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='UnitOfIssue'><keywords ui='combobox' columns='1'><textlist><text>EA</text><text>SE</text><text>PR</text><text>KT</text></textlist></keywords><code event='defaultvalue'><formula>"EA"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Unit Price</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='editable' name='UnitPrice'>
+<numberformat format='currency' digits='2' punctuated='true' parens='false' percent='false'/>
+<code event='inputvalidation'><formula>@If(!@IsNumber(UnitPrice) | UnitPrice &lt; 0; @Failure("Unit price must be a positive amount."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Maximum Quantity per Request</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='editable' name='MaxQtyPerRequest'>
+<numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/>
+<code event='defaultvalue'><formula>@If(Category = "Streamer"; 50; Category = "Insignia"; 200; Category = "Organizational Colors"; 2; 10)</formula></code>
+<code event='inputvalidation'><formula>@If(MaxQtyPerRequest &lt; 1 | MaxQtyPerRequest &gt; 500; @Failure("Maximum quantity must be between 1 and 500."); @Success)</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Lead Time (days)</run></par></tablecell>
+<tablecell><par def='1'><field type='number' kind='editable' name='LeadTimeDays'><numberformat format='general' digits='0' punctuated='false' parens='false' percent='false'/><code event='defaultvalue'><formula>30</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Approved Vendors (CAGE)</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='ApprovedVendors' allowmultivalues='true'><keywords ui='checkbox' columns='3'><formula>@DbColumn("Notes":"NoCache"; ""; "Vendors"; 1)</formula></keywords></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Regulatory Reference</run></par></tablecell>
+<tablecell><par def='1'><field type='text' kind='editable' name='Reference'><code event='defaultvalue'><formula>"AR 840-10"</formula></code></field></par></tablecell></tablerow>
+<tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Active</run></par></tablecell>
+<tablecell><par def='1'><field type='keyword' kind='editable' name='Active'><keywords ui='radiobutton' columns='2'><textlist><text>Yes</text><text>No</text></textlist></keywords><code event='defaultvalue'><formula>"Yes"</formula></code></field></par></tablecell></tablerow>
+</table>
+<pardef id='2' hide='read edit print preview'/>
+<par def='2'><field type='text' kind='computed' name='FSC'><code event='value'><formula>@Left(StockNumber; 4)</formula></code></field></par>
+<par def='2'><field type='text' kind='computed' name='NIIN'><code event='value'><formula>@ReplaceSubstring(@Right(StockNumber; 11); "-"; "")</formula></code></field></par>
+</richtext></body>
+<item name='$Flags'><text>Y</text></item>
+</form>
