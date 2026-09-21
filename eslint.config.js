@@ -24,4 +24,17 @@ module.exports = [
       'prefer-const': 'error',
     },
   },
+  {
+    files: ['harness/public/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 5,
+      sourceType: 'script',
+      globals: { ...globals.browser },
+    },
+    rules: {
+      strict: ['error', 'function'],
+      'no-var': 'off',
+      'prefer-const': 'off',
+    },
+  },
 ];

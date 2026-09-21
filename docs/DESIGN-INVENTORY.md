@@ -214,11 +214,11 @@ Source: `forms/RequestLine.dxl` · Aliases: frmRequestLine, Line · Window title
 | LineDocNumber | text | computed | `ParentDocNumber + @Right("00" + @Text(LineNumber); 2)` | — | — | — |
 | NSN | text | editable | — | — | `@ReplaceSubstring(@Trim(NSN); "-"; "")` | `@If(@Trim(NSN) = ""; @Success; @Length(NSN) != 13 \| !@Matches(NSN; "+{0-9}"); @Failure("NSN must be 13 digits (FSC + NIIN) or blank for a non-NSN exception item…` |
 | ItemKey | keyword | editable | — | — | — | `@If(@Trim(ItemKey) = "" & @Trim(ExceptionData) = ""; @Failure("Select a catalog item or enter exception data (block 9)."); @Success)` |
-| ItemDescription | text | computed | `@If(@Trim(ItemKey) = ""; @Left(ExceptionData; 60); @Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 3)))` | — | — | — |
+| ItemDescription | text | computed | `@If(@Trim(ItemKey) = ""; @Left(ExceptionData; 60); @Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 2)))` | — | — | — |
 | ExceptionData | text | editable | Unit designation to embroider, streamer inscription, special sizing etc. | — | — | `@If(@Length(ExceptionData) > 500; @Failure("Exception data may not exceed 500 characters."); @Success)` |
 | UnitOfIssue | keyword | editable | EA; SE; PR; KT | `"EA"` | — | — |
 | Quantity | number | editable | — | `1` | — | `@If(!@IsNumber(Quantity); @Failure("Quantity must be a whole number."); Quantity < 1; @Failure("Quantity must be at least 1."); Quantity != @Integer(Quantity);…` |
-| UnitPrice | number | computed | `@If(@Trim(ItemKey) = ""; @If(@IsAvailable(UnitPrice); UnitPrice; 0); @TextToNumber(@Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 4))))` | — | — | — |
+| UnitPrice | number | computed | `@If(@Trim(ItemKey) = ""; @If(@IsAvailable(UnitPrice); UnitPrice; 0); @TextToNumber(@Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 6))))` | — | — | — |
 | ExtendedPrice | number | computed | `@Round(Quantity * UnitPrice; 0.01)` | — | — | — |
 | LineStatus | keyword | editable | Open; Released; In Production; Backordered; Shipped; Complete; Cancelled (+free text) | `"Open"` | — | — |
 | VendorShipDate | datetime | editable | — | — | — | — |

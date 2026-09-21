@@ -43,6 +43,8 @@ VOLUMES = {
     "Requester.heraldry": 350, "Requester.vetmedals": 2500, "AwardsCase": 3000, "AwardLine": 7000,
     "EngravingJob": 400, "ShipmentRecord": 2200, "CaseNote": 900, "AuthorizationFile": 40,
 }
+# AuthorizationFile documents that are still ImportStatus=Received; these are the files shipped under export/authorization-files/
+PENDING_AUTH_FILES = 4
 
 # ----------------------------------------------------------------------------------------------
 # Reference data (public, real) -----------------------------------------------------------------
@@ -950,13 +952,22 @@ def build_vetmedals(rng: random.Random, dq: dict, auth_files_out: dict) -> Db:
     base_readers = ["[TACOM]", "[CSR]", "[Admin]", "[ReadOnlyAudit]", "LocalDomainServers"]
 
     # Authorization files ------------------------------------------------------------------------------
+    # The last PENDING_AUTH_FILES files are the inbound batch that arrived after the most recent scheduled
+    # ImportAuthorizationFile run (ImportLastRun in the Profile): their AuthorizationFile documents exist with
+    # ImportStatus "Received", no cases reference them, and they are the files shipped in export/authorization-files/.
     auth_docs = []
+    used_names = set()
     for i in range(VOLUMES["AuthorizationFile"]):
         src = "HRC" if i % 3 else "NPRC"
-        tdate = business_date(rng, date(2004, 3, 1), date(2026, 8, 29)) if i < VOLUMES["AuthorizationFile"] - 4 else business_date(rng, date(2026, 6, 1), date(2026, 8, 29))
-        fname = (f"HRC_AWD_{tdate:%Y%m%d}_{rng.randint(1, 9):d}.txt" if src == "HRC" else f"nprc_awd_{tdate:%Y%m%d}_b{rng.randint(10, 99)}.dat")
-        received = rand_dt(rng, tdate, 4, 6)
-        auth_docs.append({"i": i, "src": src, "date": tdate, "fname": fname, "received": received, "cases": [], "lines": 0, "req_new": 0, "req_matched": 0, "rejected": 0})
+        pending = i >= VOLUMES["AuthorizationFile"] - PENDING_AUTH_FILES
+        tdate = business_date(rng, date(2026, 8, 31), date(2026, 9, 1)) if pending else business_date(rng, date(2004, 3, 1), date(2026, 8, 28))
+        while True:
+            fname = (f"HRC_AWD_{tdate:%Y%m%d}_{rng.randint(1, 9):d}.txt" if src == "HRC" else f"nprc_awd_{tdate:%Y%m%d}_b{rng.randint(10, 99)}.dat")
+            if fname not in used_names:
+                break
+        used_names.add(fname)
+        received = rand_dt(rng, tdate, 4, 6) if not pending else datetime.combine(tdate, datetime.min.time()) + timedelta(hours=rng.randint(5, 22), minutes=rng.randint(0, 59))
+        auth_docs.append({"i": i, "src": src, "date": tdate, "fname": fname, "received": received, "pending": pending, "cases": [], "lines": 0, "req_new": 0, "req_matched": 0, "rejected": 0})
 
     # Requesters (veterans / NOK) --------------------------------------------------------------------------
     requesters = []
@@ -1062,7 +1073,7 @@ def build_vetmedals(rng: random.Random, dq: dict, auth_files_out: dict) -> Db:
         rank = rng.choice(RANKS_OFFICER) if rng.random() < 0.15 else rng.choice(RANKS_ENLISTED[:11] if era not in ("World War II", "Korea") else RANKS_ENLISTED)
         source = rng.choice(["HRC", "HRC", "HRC", "NPRC", "NPRC", "Manual", "Congressional"]) if era not in ("World War II", "Korea") else rng.choice(["NPRC", "NPRC", "NPRC", "HRC", "Congressional"])
         priority = "Congressional" if source == "Congressional" else ("Expedite" if rng.random() < 0.08 else "Routine")
-        auth = rng.choice([a for a in auth_docs if a["src"] == source and a["date"] <= entered] or [None]) if source in ("HRC", "NPRC") else None
+        auth = rng.choice([a for a in auth_docs if a["src"] == source and not a["pending"] and a["date"] <= entered] or [None]) if source in ("HRC", "NPRC") else None
         auth_date = (auth["date"] if auth else entered - timedelta(days=rng.randint(3, 40)))
         auth_date_value = auth_date
         if entered.year < 2009 and rng.random() < 0.12:
@@ -1293,11 +1304,16 @@ def build_vetmedals(rng: random.Random, dq: dict, auth_files_out: dict) -> Db:
     # Shipment records ------------------------------------------------------------------------------------
     rng.shuffle(shipments)
     shipments = shipments[: VOLUMES["ShipmentRecord"] - ORPHAN_SHIPMENTS]
+    live_case_numbers = {c.items["CaseNumber"] for c in cases}
     for k in range(ORPHAN_SHIPMENTS):
         # shipments whose case was archived by ArchiveClosedCases without its responses - wart #5
         y = rng.randint(2006, 2015)
+        ghost_number = f"VMA-{y}-{rng.randint(1, 999):06d}"
+        while ghost_number in live_case_numbers:
+            ghost_number = f"VMA-{y}-{rng.randint(1, 999):06d}"
+        live_case_numbers.add(ghost_number)
         ghost = SimpleNamespace(items={
-            "CaseNumber": f"VMA-{y}-{rng.randint(1, 999):06d}", "Stage": "Closed", "LineCount": rng.randint(1, 4),
+            "CaseNumber": ghost_number, "Stage": "Closed", "LineCount": rng.randint(1, 4),
             "ShipToName": f"{rng.choice(FIRST_NAMES)} {rng.choice(SURNAMES)}", "ShipToStreet": f"{rng.randint(10, 9999)} {rng.choice(STREET_NAMES)} {rng.choice(STREET_TYPES)}",
             "ShipToCity": "Columbus", "ShipToState": "OH", "ShipToZIP": "43215", "TrackingNumber": ""})
         shipments.append((ghost, rand_dt(rng, date(y, rng.randint(1, 12), rng.randint(1, 28))), "orphan"))
@@ -1368,18 +1384,25 @@ def build_vetmedals(rng: random.Random, dq: dict, auth_files_out: dict) -> Db:
         if rejected:
             log.append(f"{imported:%m/%d/%Y %H:%M} {rejected} record(s) rejected - see ImportLog detail")
         log.append(f"{imported:%m/%d/%Y %H:%M} Import finished: {status}")
+        if a["pending"]:
+            status, rejected, nrec, missing_file = "Received", 0, 0, False
+            files = [(a["fname"], 60 + 30 * (216 if a["src"] == "HRC" else 140), a["received"])]
+            imported = a["received"]
+            log = [f"{a['received']:%m/%d/%Y %H:%M} File received in \\\\haas-app01\\hrc_transfer\\inbound by {IMPORTER}",
+                   f"{a['received']:%m/%d/%Y %H:%M} Awaiting scheduled ImportAuthorizationFile run (daily 04:15) or manual run from the Agents menu"]
         n = db.new("AuthorizationFile", a["received"], imported, [IMPORTER], {
             "FileName": a["fname"], "SourceAgency": a["src"], "Layout": "HRC-FIXED" if a["src"] == "HRC" else "NPRC-DELIM", "TransmissionDate": a["date"],
             "ReceivedDate": a["received"], "AuthorizationDate": a["date"] - timedelta(days=rng.randint(1, 5)), "ImportStatus": status,
-            "ImportedDate": imported, "ImportedBy": IMPORTER, "RecordCount": nrec, "CasesCreated": len(a["cases"]) if status != "Rejected" else 0,
+            "ImportedDate": "" if a["pending"] else imported, "ImportedBy": "" if a["pending"] else IMPORTER, "RecordCount": nrec, "CasesCreated": len(a["cases"]) if status != "Rejected" else 0,
             "LinesCreated": a["lines"] if status != "Rejected" else 0, "RequestersCreated": a["req_new"], "RequestersMatched": a["req_matched"], "RecordsRejected": rejected,
-            "TrailerChecksum": "N/A" if a["src"] == "NPRC" else ("No" if status == "Rejected" else "Yes"), "ChecksumMatch": "N/A" if a["src"] == "NPRC" else ("No" if status == "Rejected" else "Yes"),
+            "TrailerChecksum": "" if a["pending"] else ("N/A" if a["src"] == "NPRC" else ("No" if status == "Rejected" else "Yes")),
+            "ChecksumMatch": "" if a["pending"] else ("N/A" if a["src"] == "NPRC" else ("No" if status == "Rejected" else "Yes")),
             "ImportLog": log, "DocReaders": ["[Importer]", "[Admin]", "[TACOM]", "[ReadOnlyAudit]", "LocalDomainServers"], "FileKey": a["fname"].upper(),
         }, files=files)
         a["note"] = n
         dq["file_refs_vetmedals"] += len(files)
-    # the four most recent files are also shipped as sample files in export/authorization-files/
-    for a in auth_docs[-4:]:
+    # the pending inbound files are the ones shipped as sample files in export/authorization-files/
+    for a in auth_docs[-PENDING_AUTH_FILES:]:
         sample_names.append(a)
     auth_files_out["samples"] = sample_names
     auth_files_out["cases"] = cases
@@ -1435,7 +1458,8 @@ def hrc_file(rng: random.Random, a: dict, cases: list[Note], defects: bool) -> s
             nawd += 1
     if defects:
         # unknown award code, quantity over limit, award record for a case id that is not in the file, duplicate case record
-        recs.append("20" + fw("H26ZZZ0001", 10) + fw("XQZ", 6) + "01" + "00" + "N" + fw("", 40) + fw("HRC Awards and Decorations Branch", 30))
+        recs.append("20" + fw(recs[0][2:12], 10) + fw("XQZ", 6) + "01" + "00" + "N" + fw("", 40) + fw("HRC Awards and Decorations Branch", 30))
+        recs.append("20" + fw("H26ZZZ0001", 10) + fw("PH", 6) + "01" + "00" + "N" + fw("", 40) + fw("HRC Awards and Decorations Branch", 30))
         recs.insert(3, "20" + recs[1][2:12] + fw("BSM", 6) + "05" + "00" + "Y" + fw("TEST QTY OVER LIMIT", 40) + fw("HRC Awards and Decorations Branch", 30))
         recs.append(recs[0])
         recs.append("30" + fw("UNKNOWN RECORD TYPE", 60))
@@ -1490,8 +1514,11 @@ def write_auth_files(rng: random.Random, outdir: str, info: dict, dq: dict):
     with open(os.path.join(outdir, "README.md"), "w", encoding="utf-8", newline="\n") as f:
         f.write("# Sample authorization files\n\n")
         f.write("Generated by `tools/generate_fixtures.py`. Each file corresponds to an `AuthorizationFile` document in\n"
-                "`export/dxl/vetmedals-documents.dxl` (matched on `FileName`) and parses with `ImportAuthorizationFile`\n"
-                "(LotusScript in `nsf/vetmedals.nsf/agents/`, JavaScript port in `harness/lib/importer.js`).\n\n")
+                "`export/dxl/vetmedals-documents.dxl` (matched on `FileName`) whose `ImportStatus` is `Received`: these are the\n"
+                "inbound batch that arrived after the last scheduled import, so `ImportAuthorizationFile` (LotusScript in\n"
+                "`nsf/vetmedals.nsf/agents/`, JavaScript port in `harness/lib/agents.js`) will process them when run from\n"
+                "the harness Agents menu. The veteran and next-of-kin names deliberately overlap earlier cases so the importer's\n"
+                "requester de-duplication is exercised.\n\n")
         f.write("| File | Layout | Case records | Intentional defects |\n|---|---|---|---|\n")
         for fname, src, n, defects in written:
             f.write(f"| `{fname}` | {'HRC fixed-width (01/10/20/99)' if src == 'HRC' else 'NPRC pipe-delimited (C/A/T)'} | {n} | "

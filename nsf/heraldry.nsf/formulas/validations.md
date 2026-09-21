@@ -109,7 +109,7 @@ Vendor.LeadTimeDays : 15..60
 | `Request.DocumentNumber` | `DODAAC + JulianDate + @Right("0000" + @Text(serial); 4)` | 14 chars; serial from Profile (not transactional — duplicates exist) |
 | `Request.EstimatedShipDate` | `@Adjust(ReleasedDate; 0; 0; VendorLeadTimeDays; 0; 0; 0)` | |
 | `Request.LineCount` / `TotalValue` | `@Elements(@DbLookup(...))`, `@Sum(...)` on `($All)` | recomputed on save only |
-| `RequestLine.ExtendedPrice` | `@Round(Quantity * UnitPrice; 2)` | |
+| `RequestLine.ExtendedPrice` | `@Round(Quantity * UnitPrice; 0.01)` | |
 | `Request.StatusInquiryKey` | `@UpperCase(DocumentNumber) + "\|" + @UpperCase(DODAAC) + "\|" + @UpperCase(UIC)` | rebuilt nightly |
 | `Request.DocReaders` (Readers) | `@Trim(@Unique("[TACOM]":"[DLA]":"[Admin]":"[ReadOnlyAudit]":"LocalDomainServers":EnteredBy:@If(VendorKey != ""; "Vendor-" + VendorKey; "")))` | |
 | `Request.DocAuthors` (Authors) | `@If(IsReleased; "[TACOM]":"[Admin]":"Vendor-" + VendorKey; "[TACOM]":"[Admin]":EnteredBy)` | requester loses edit on release |

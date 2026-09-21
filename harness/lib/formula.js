@@ -258,7 +258,7 @@ class Parser {
     let left = this.parseUnary();
     for (;;) {
       const tok = this.peek();
-      if (tok.t === 'op' && (tok.v === '*' || tok.v === '/' || tok.v === '*=' || tok.v === '/=')) {
+      if (tok.t === 'op' && (tok.v === '*' || tok.v === '/' || tok.v === '/=')) {
         this.next();
         left = { type: 'bin', op: tok.v[0], left, right: this.parseUnary() };
       } else {
@@ -527,27 +527,31 @@ function pairwise(a, b, fn) {
 
 /** Notes @Matches wildcard pattern -> RegExp.  ? = one char, * = any run, {set}, +x = one or more x, \ escapes. */
 function matchesToRegExp(pattern) {
+  // Notes wildcards: ? one char, * any string, + repeats the preceding atom,
+  // {set} / {!set} character classes, \ escapes the next character.
   let re = '^';
   let i = 0;
-  let plus = false;
-  const wrap = (atom) => {
-    re += plus ? `(?:${atom})+` : atom;
-    plus = false;
+  // wrap() consumes the atom ending at index `end` (exclusive) plus any trailing '+'
+  const wrap = (atom, end) => {
+    if (pattern[end] === '+') {
+      re += `(?:${atom})+`;
+      i = end + 1;
+    } else {
+      re += atom;
+      i = end;
+    }
   };
   while (i < pattern.length) {
     const ch = pattern[i];
     if (ch === '\\' && i + 1 < pattern.length) {
-      wrap(pattern[i + 1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-      i += 2;
+      wrap(pattern[i + 1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), i + 2);
     } else if (ch === '?') {
-      wrap('.');
-      i++;
+      wrap('.', i + 1);
     } else if (ch === '*') {
       re += '.*';
-      plus = false;
       i++;
     } else if (ch === '+') {
-      plus = true;
+      re += '.*';
       i++;
     } else if (ch === '{') {
       const j = pattern.indexOf('}', i);
@@ -560,11 +564,9 @@ function matchesToRegExp(pattern) {
         neg = true;
         body = body.slice(1);
       }
-      wrap(`[${neg ? '^' : ''}${body.replace(/[\]\\^]/g, '\\$&')}]`);
-      i = j + 1;
+      wrap(`[${neg ? '^' : ''}${body.replace(/[\]\\^]/g, '\\$&')}]`, j + 1);
     } else {
-      wrap(ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-      i++;
+      wrap(ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), i + 1);
     }
   }
   return new RegExp(`${re}$`, 's');
@@ -765,11 +767,17 @@ class Evaluator {
       return la.some((a) => lb.some((b) => compare(a, b, op))) ? 1 : 0;
     }
     if (op.length === 2 && op[0] === '*') {
-      // permuted operators *= *< *> *!  (all pairs)
+      // permuted operators *= *< *> *!  produce one result per (left, right) pair
       const la = toList(left);
       const lb = toList(right);
       const cop = op === '*!' ? '!=' : op.slice(1);
-      return la.every((a) => lb.every((b) => compare(a, b, cop))) ? 1 : 0;
+      const out = [];
+      for (const a of la) {
+        for (const b of lb) {
+          out.push(compare(a, b, cop) ? 1 : 0);
+        }
+      }
+      return out.length === 1 ? out[0] : out;
     }
     if (op === '+') {
       return pairwise(left, right, (a, b) => {
@@ -1062,9 +1070,12 @@ const FUNCTIONS = {
   '@istime': (ev, args) => (toList(args[0]).every((a) => isDateValue(a)) ? 1 : 0),
   '@integer': (ev, args) => pairwise(args[0], 0, (a) => Math.trunc(asNumber(a))),
   '@round': (ev, args) => {
-    const places = args.length > 1 ? asNumber(toList(args[1])[0]) : 0;
-    const f = 10 ** places;
-    return pairwise(args[0], 0, (a) => Math.round(asNumber(a) * f) / f);
+    // Notes semantics: the optional second argument is a rounding factor (e.g. 0.01), not a digit count
+    const factor = args.length > 1 ? asNumber(toList(args[1])[0]) : 1;
+    if (!factor) {
+      return new FormulaErrorValue('@Round: rounding factor must be non-zero');
+    }
+    return pairwise(args[0], 0, (a) => Number((Math.round(asNumber(a) / factor) * factor).toFixed(10)));
   },
   '@abs': (ev, args) => pairwise(args[0], 0, (a) => Math.abs(asNumber(a))),
   '@modulo': (ev, args) => pairwise(args[0], args[1], (a, b) => asNumber(a) % asNumber(b)),

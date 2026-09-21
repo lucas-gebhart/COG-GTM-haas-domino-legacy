@@ -46,7 +46,7 @@ Use "HAASValidation"</lotusscript></code></globals>
 </field></par></tablecell></tablerow>
 <tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Item Description</run></par></tablecell>
 <tablecell><par def='1'><field type='text' kind='computed' name='ItemDescription'>
-<code event='value'><formula>@If(@Trim(ItemKey) = ""; @Left(ExceptionData; 60); @Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 3)))</formula></code></field></par></tablecell></tablerow>
+<code event='value'><formula>@If(@Trim(ItemKey) = ""; @Left(ExceptionData; 60); @Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 2)))</formula></code></field></par></tablecell></tablerow>
 <tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>9. Exception Data (non-NSN)</run></par></tablecell>
 <tablecell><par def='1'><field type='text' kind='editable' name='ExceptionData' description='Unit designation to embroider, streamer inscription, special sizing etc.'>
 <code event='inputvalidation'><formula>@If(@Length(ExceptionData) &gt; 500; @Failure("Exception data may not exceed 500 characters."); @Success)</formula></code></field></par></tablecell></tablerow>
@@ -67,7 +67,7 @@ Use "HAASValidation"</lotusscript></code></globals>
 <tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Unit Price</run></par></tablecell>
 <tablecell><par def='1'><field type='number' kind='computed' name='UnitPrice'>
 <numberformat format='currency' digits='2' punctuated='true' parens='false' percent='false'/>
-<code event='value'><formula>@If(@Trim(ItemKey) = ""; @If(@IsAvailable(UnitPrice); UnitPrice; 0); @TextToNumber(@Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 4))))</formula></code></field></par></tablecell></tablerow>
+<code event='value'><formula>@If(@Trim(ItemKey) = ""; @If(@IsAvailable(UnitPrice); UnitPrice; 0); @TextToNumber(@Text(@DbLookup("Notes":"NoCache"; ""; "HeraldicCatalog"; ItemKey; 6))))</formula></code></field></par></tablecell></tablerow>
 <tablerow><tablecell><par def='1'><run><font style='bold' size='9pt'/>Extended Price</run></par></tablecell>
 <tablecell><par def='1'><field type='number' kind='computed' name='ExtendedPrice'>
 <numberformat format='currency' digits='2' punctuated='true' parens='false' percent='false'/>

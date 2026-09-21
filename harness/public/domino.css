@@ -1,0 +1,326 @@
+/*
+ * domino.css - classic Domino web application look (circa R6-9 "Notes blue" template).
+ * Local file only; the harness loads no remote resources.  Verdana/Arial are correct
+ * here because we are emulating the legacy UI, not the harness vendor's brand.
+ */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: #000000;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 11px;
+}
+
+a { color: #003399; }
+a:visited { color: #663399; }
+a:hover { color: #cc0000; }
+
+h1.pageTitle {
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+  color: #003366;
+  margin: 8px 0 8px 0;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #99aacc;
+}
+h2 { font-size: 14px; color: #003366; margin: 14px 0 6px; }
+h3 { font-size: 12px; color: #003366; margin: 14px 0 4px; border-bottom: 1px dotted #99aacc; }
+p { margin: 6px 0; line-height: 1.45; }
+code, .mono { font-family: "Courier New", Courier, monospace; font-size: 11px; }
+.small { font-size: 10px; }
+.muted { color: #666666; }
+.warn { color: #990000; }
+.req { color: #cc0000; font-weight: bold; }
+pre { font-family: "Courier New", Courier, monospace; font-size: 11px; background: #f6f6f6; border: 1px solid #cccccc; padding: 6px; overflow: auto; }
+
+/* ---------- harness banner (the only non-legacy element) ---------- */
+#harnessBanner {
+  background: #FCFCFC;
+  color: #141414;
+  border-bottom: 1px solid #E7E7E7;
+  font-family: "NB International Pro", Geist, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  padding: 4px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#harnessBanner .hbBrand img { height: 12px; vertical-align: middle; }
+#harnessBanner .hbText { letter-spacing: 0.01em; }
+
+/* ---------- Notes-blue header ---------- */
+#dominoHeader {
+  background: #4a6ea9;
+  background-image: none;
+  color: #ffffff;
+  border-bottom: 2px solid #1f3f7a;
+  padding: 6px 10px;
+}
+#dominoHeader a { color: #ffffff; }
+#dominoHeader .hdrApp { font-size: 18px; font-weight: bold; letter-spacing: 0.02em; }
+#dominoHeader .hdrSub, #dominoHeader .hdrServer { font-size: 10px; color: #dde6f5; }
+#dominoHeader .hdrUser { font-size: 11px; white-space: nowrap; }
+#dominoHeader .hdrRoles { font-family: "Courier New", Courier, monospace; font-size: 10px; color: #ffe680; }
+
+#dominoMenu {
+  background: #dfe6f3;
+  border-bottom: 1px solid #99aacc;
+  padding: 3px 10px;
+  font-size: 11px;
+}
+#dominoMenu a { text-decoration: none; padding: 0 3px; }
+#dominoMenu a:hover { text-decoration: underline; }
+
+/* ---------- body layout ---------- */
+#dominoBody { border-collapse: collapse; }
+#dominoNav {
+  width: 170px;
+  background: #eef2f9;
+  border-right: 1px solid #99aacc;
+  padding: 8px 6px;
+  font-size: 11px;
+}
+#dominoNav .navHead { font-weight: bold; color: #003366; margin: 8px 0 3px; border-bottom: 1px solid #99aacc; }
+#dominoNav .navLink { display: block; padding: 2px 4px; text-decoration: none; }
+#dominoNav .navLink:hover { background: #dfe6f3; text-decoration: underline; }
+#dominoNav .navCurrent { background: #4a6ea9; color: #ffffff; font-weight: bold; }
+#dominoContent { padding: 6px 12px 20px 12px; }
+#dominoFooter {
+  border-top: 1px solid #99aacc;
+  background: #eef2f9;
+  color: #444444;
+  font-size: 10px;
+  padding: 4px 10px;
+  margin-top: 10px;
+}
+.breadcrumb { font-size: 10px; color: #666666; margin: 4px 0; }
+.breadcrumb a { color: #003399; }
+
+/* ---------- action bar (Notes action buttons) ---------- */
+.actionBar {
+  background: #e8e8e8;
+  border: 1px solid #999999;
+  border-bottom-color: #666666;
+  padding: 2px 4px;
+  margin: 4px 0 6px 0;
+}
+.actionBar .inlineForm { display: inline; }
+.actionButton, .lnkButton, .viewNavBtn, button, input[type=submit] {
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  color: #000000;
+  background: #d4d0c8;
+  border: 1px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  padding: 2px 8px;
+  margin: 1px 2px;
+  text-decoration: none;
+  display: inline-block;
+  cursor: pointer;
+  border-radius: 0;
+}
+.actionButton:hover, .lnkButton:hover, .viewNavBtn:hover, button:hover { background: #e4e1da; color: #000000; }
+button:active, .actionButton:active { border-color: #404040 #ffffff #ffffff #404040; }
+button.primaryButton { font-weight: bold; }
+button.dangerButton { color: #990000; }
+button[disabled] { color: #808080; cursor: default; }
+
+/* ---------- forms (DD 1348-6 style layout tables) ---------- */
+.dominoForm { margin: 4px 0; }
+table.formTable {
+  border-collapse: collapse;
+  width: 100%;
+  border: 1px solid #99aacc;
+  background: #ffffff;
+}
+table.formTable td { padding: 3px 6px; border: 1px solid #ccd6e6; vertical-align: top; }
+table.formTable td.fieldLabel {
+  background: #eef2f9;
+  font-weight: bold;
+  color: #003366;
+  width: 170px;
+  white-space: nowrap;
+}
+table.formTable td.fieldValue { background: #ffffff; }
+table.formTable td.sectionHead {
+  background: #4a6ea9;
+  color: #ffffff;
+  font-weight: bold;
+  padding: 2px 6px;
+}
+table.formTable .fieldHelp { color: #666666; font-size: 10px; display: block; margin-top: 1px; }
+table.formTable .readonlyValue { color: #333333; }
+.formHeader { border: 1px solid #99aacc; background: #f6f8fc; padding: 6px 8px; margin-bottom: 6px; }
+.formButtons { margin: 8px 0; }
+.inlineForm { display: inline-block; margin: 0 2px; }
+.lockedNote { border: 1px solid #cc9900; background: #fff8dc; padding: 6px; margin: 6px 0; }
+input, select, textarea {
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  border: 1px solid #7f9db9;
+  padding: 1px 2px;
+  background: #ffffff;
+}
+input[readonly] { background: #f0f0f0; color: #555555; }
+.multiValue { display: inline-block; }
+.richText { white-space: pre-wrap; }
+
+/* ---------- Domino error / info blocks (the classic red-x table) ---------- */
+.dominoError {
+  border: 1px solid #cc0000;
+  background: #fff0f0;
+  padding: 6px 8px;
+  margin: 6px 0;
+}
+.dominoError .errIcon, .dominoInfo .infoIcon { font-weight: bold; margin-right: 4px; }
+.dominoError .errIcon { color: #cc0000; }
+.dominoError ul { margin: 4px 0 0 18px; padding: 0; }
+.dominoInfo {
+  border: 1px solid #669933;
+  background: #f0fff0;
+  padding: 6px 8px;
+  margin: 6px 0;
+}
+.dominoInfo .infoIcon { color: #339933; }
+.legacyError {
+  font-family: "Courier New", Courier, monospace;
+  border: 1px solid #000000;
+  background: #ffffff;
+  padding: 8px;
+  margin: 8px 0;
+}
+.dominoErrorPage { padding: 20px; font-family: "Times New Roman", Times, serif; font-size: 14px; }
+.dominoErrorPage h2 { font-family: "Times New Roman", Times, serif; font-size: 20px; color: #000000; }
+
+/* ---------- views (<table border=1> with categories and twisties) ---------- */
+table.dominoView {
+  border-collapse: collapse;
+  border: 1px solid #808080;
+  width: 100%;
+  background: #ffffff;
+  margin: 4px 0;
+}
+table.dominoView th {
+  background: #dfe6f3;
+  color: #003366;
+  border: 1px solid #808080;
+  padding: 3px 5px;
+  text-align: left;
+  font-weight: bold;
+  white-space: nowrap;
+}
+table.dominoView th a { color: #003366; text-decoration: none; }
+table.dominoView th .sortIcon { color: #4a6ea9; font-size: 9px; }
+table.dominoView td {
+  border: 1px solid #c0c0c0;
+  padding: 2px 5px;
+  vertical-align: top;
+}
+table.dominoView tr:hover td { background: #f6f8fc; }
+table.dominoView tr.catRow td {
+  background: #eef2f9;
+  border-top: 1px solid #808080;
+  font-weight: bold;
+}
+table.dominoView tr.catRow .catLink { text-decoration: none; color: #003366; }
+table.dominoView tr.catRow .catCount { color: #666666; font-weight: normal; }
+table.dominoView tr.totalRow td { background: #f0f0f0; font-weight: bold; border-top: 2px solid #808080; }
+table.dominoView td.respCell { color: #333333; }
+table.dominoView .respIndent { display: inline-block; width: 18px; }
+table.dominoView .respTwisty { color: #4a6ea9; }
+table.dominoView tr[hidden] { display: none; }
+a.twisty {
+  text-decoration: none;
+  color: #4a6ea9;
+  font-size: 10px;
+  display: inline-block;
+  width: 12px;
+}
+.viewHeader { margin: 4px 0; }
+.viewHeader .viewActions { margin-top: 3px; }
+.viewAction {
+  display: inline-block;
+  border: 1px solid #999999;
+  background: #e8e8e8;
+  padding: 1px 6px;
+  margin: 1px 2px 1px 0;
+  font-size: 10px;
+  color: #333333;
+}
+.viewNav, .viewToolbar, .viewFooter {
+  background: #eef2f9;
+  border: 1px solid #99aacc;
+  padding: 3px 6px;
+  margin: 4px 0;
+}
+.viewFooter { font-size: 10px; }
+.viewTools { float: right; }
+.emptyView { color: #666666; padding: 8px; }
+.summaryTable td, .summaryTable th { padding: 2px 8px; }
+
+/* ---------- status chips and aging flags ---------- */
+.statusChip {
+  display: inline-block;
+  border: 1px solid #808080;
+  padding: 0 5px;
+  font-size: 10px;
+  background: #f0f0f0;
+  color: #000000;
+}
+.statusChip.stAuthorized, .statusChip.stEntered, .statusChip.stSubmitted { background: #e6eeff; border-color: #4a6ea9; }
+.statusChip.stEngraving, .statusChip.stInReview, .statusChip.stApproved { background: #fff3d6; border-color: #cc9900; }
+.statusChip.stAssembly, .statusChip.stWarehouse, .statusChip.stReleased { background: #e8f5e0; border-color: #669933; }
+.statusChip.stShipped, .statusChip.stComplete { background: #d8f0d8; border-color: #339933; }
+.statusChip.stClosed { background: #e0e0e0; border-color: #808080; color: #333333; }
+.statusChip.stCancelled { background: #f5e0e0; border-color: #cc0000; color: #990000; text-decoration: line-through; }
+.statusChip.stHold { background: #ffe0b3; border-color: #cc6600; }
+.statusChip.stClosedWart, .statusChip.stOther { background: #fff0f0; border-color: #cc0000; border-style: dashed; }
+.agingFlag { display: inline-block; padding: 0 5px; font-size: 10px; font-weight: bold; border: 1px solid; }
+.agingFlag.agingAmber { background: #ffcc33; border-color: #cc9900; color: #000000; }
+.agingFlag.agingRed { background: #cc0000; border-color: #990000; color: #ffffff; }
+.roleChip { font-family: "Courier New", Courier, monospace; font-size: 10px; background: #eef2f9; border: 1px solid #99aacc; padding: 0 3px; }
+.badge { display: inline-block; background: #4a6ea9; color: #ffffff; padding: 0 5px; font-size: 10px; font-weight: bold; }
+
+/* ---------- case stage tracker ---------- */
+.stageTracker { margin: 6px 0; padding: 4px 6px; border: 1px solid #99aacc; background: #f6f8fc; }
+.stageStep { display: inline-block; padding: 1px 7px; border: 1px solid #99aacc; background: #ffffff; color: #666666; }
+.stageStep.done { background: #dfe6f3; color: #003366; }
+.stageStep.current { background: #4a6ea9; color: #ffffff; font-weight: bold; border-color: #1f3f7a; }
+.stageArrow { color: #808080; padding: 0 3px; }
+
+/* ---------- documents ---------- */
+.docHeader { margin: 4px 0 6px; }
+.docActions { margin: 6px 0; }
+.docActions .inlineForm { vertical-align: middle; }
+.historyBox { border: 1px solid #c0c0c0; background: #fafafa; padding: 6px; max-height: 200px; overflow: auto; }
+.twistySection { margin: 10px 0 2px; font-weight: bold; color: #003366; }
+.twistyBody { border: 1px solid #c0c0c0; padding: 4px; margin-bottom: 8px; }
+.fileBody { max-height: 400px; }
+.noteForm { border: 1px dashed #99aacc; padding: 4px; margin: 4px 0; }
+
+/* ---------- home page tiles ---------- */
+.welcomeBox { border: 1px solid #99aacc; background: #f6f8fc; padding: 8px 10px; margin: 6px 0; }
+.homeTiles { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.homeTiles .tile {
+  border: 1px solid #99aacc;
+  background: #ffffff;
+  width: 230px;
+  padding: 6px 8px;
+}
+.homeTiles .tile b { color: #003366; display: block; border-bottom: 1px solid #dfe6f3; margin-bottom: 3px; }
+.inquiryResult { border: 1px solid #99aacc; padding: 6px 8px; margin: 6px 0; background: #ffffff; }
+
+/* ---------- login stub ---------- */
+.loginBox { border: 1px solid #808080; background: #f0f0f0; padding: 10px 14px; width: 520px; margin: 20px 0; }
+.loginBox h2 { margin-top: 0; }
+
+/* ---------- agents ---------- */
+.agentForm { border: 1px solid #99aacc; background: #f6f8fc; padding: 8px; margin: 6px 0; }
+.agentLog { font-family: "Courier New", Courier, monospace; font-size: 11px; background: #000000; color: #c0c0c0; padding: 8px; max-height: 420px; overflow: auto; white-space: pre-wrap; }
+
+@media print {
+  #harnessBanner, #dominoMenu, #dominoNav, .actionBar, .formButtons { display: none; }
+}

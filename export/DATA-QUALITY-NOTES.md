@@ -41,12 +41,12 @@ Wart numbers refer to `nsf/README-design.md` section 5.
   * `completed`: 5
   * `ship`: 1
   * `shiped`: 5
-* `AwardsCase.Stage`: 171 documents carry a non-keyword value:
-  * `CLOSED`: 49
-  * `Closed `: 45
-  * `Complete`: 31
-  * `closed`: 46
-* `AwardLine.AwardName` free-text (unknown import code kept as name): 44
+* `AwardsCase.Stage`: 162 documents carry a non-keyword value:
+  * `CLOSED`: 43
+  * `Closed `: 44
+  * `Complete`: 33
+  * `closed`: 42
+* `AwardLine.AwardName` free-text (unknown import code kept as name): 40
 
 ### 2. Duplicated requester documents (wart #2)
 
@@ -55,8 +55,8 @@ Wart numbers refer to `nsf/README-design.md` section 5.
 
 ### 3. Mixed date formats (wart #3)
 
-* `AwardsCase.AuthorizationDate` stored as text: 61 (shapes `M/D/YYYY`, `YYYY-MM-DD`, `DD MON YY`, `YYYYMMDD`)
-* `ShipmentRecord.ShippedDate` stored as text: 214; `ShipDateText` populated on 464 records
+* `AwardsCase.AuthorizationDate` stored as text: 64 (shapes `M/D/YYYY`, `YYYY-MM-DD`, `DD MON YY`, `YYYYMMDD`)
+* `ShipmentRecord.ShippedDate` stored as text: 223; `ShipDateText` populated on 427 records
 * `Request.EnteredDate` stored as text: 7
 
 ### 4. Deleted-but-referenced vendor (wart #4)
@@ -68,32 +68,32 @@ Wart numbers refer to `nsf/README-design.md` section 5.
 
 * `RequestLine` whose parent UNID is not in the export: 40
 * `AwardLine` whose parent UNID is not in the export: 60
-* `EngravingJob` whose `CaseNumber` matches no `AwardsCase`: 10
-* `ShipmentRecord` whose `CaseNumber` matches no `AwardsCase`: 7
+* `EngravingJob` whose `CaseNumber` matches no `AwardsCase`: 9
+* `ShipmentRecord` whose `CaseNumber` matches no `AwardsCase`: 8
 
 ### 6. `$FILE` attachment references (wart #6)
 
 * heraldry.nsf `$FILE` items: 319 (scanned DD1348-6 PDFs, justification memos, SF-50s). Binary content is not in the export.
-* vetmedals.nsf `$FILE` items: 134 (raw authorization transmissions, correspondence).
+* vetmedals.nsf `$FILE` items: 130 (raw authorization transmissions, correspondence).
 * `AuthorizationFile` documents whose `FileBody` should hold an attachment but have no `$FILE` item: 4
 * Only the 4 files in `export/authorization-files/` exist as real bytes.
 
 ### 9. Non-unique business keys (wart #9)
 
 * Duplicate `Request.DocumentNumber`: 31 extra documents across 27 numbers
-* Duplicate `AwardsCase.CaseNumber`: 10 extra documents
+* Duplicate `AwardsCase.CaseNumber`: 9 extra documents
 
 ### 11. `$UpdatedBy` polluted by the agent signer (wart #11)
 
-* `AwardsCase` documents whose `$UpdatedBy` contains `CN=HAAS-APP01/O=TACOM`: 612 (every open case is saved nightly by `NightlyAging`).
+* `AwardsCase` documents whose `$UpdatedBy` contains `CN=HAAS-APP01/O=TACOM`: 622 (every open case is saved nightly by `NightlyAging`).
 
 ### Other
 
 * `RequestLine.Quantity` above `HeraldicItem.MaxQtyPerRequest` (imported before validation existed): 38
 * `AwardLine.Quantity` above 3: 41
-* `AwardLine.EngravingText` not upper case (pre-2011 validation gap): 47
-* `ShipmentRecord.ShipStatus = Returned`: 31
-* Open awards cases: 612 - `AgingFlag` Amber: 48, Red: 399 (thresholds 60/75 days as of 2026-09-01)
+* `AwardLine.EngravingText` not upper case (pre-2011 validation gap): 44
+* `ShipmentRecord.ShipStatus = Returned`: 29
+* Open awards cases: 622 - `AgingFlag` Amber: 47, Red: 409 (thresholds 60/75 days as of 2026-09-01)
 
 ## Synthetic-data statement
 

@@ -1,5 +1,5 @@
 node_modules/
-harness/data/store.json
+harness/data/*.json
 harness/logs/*.jsonl
 harness/logs/*.log
 .DS_Store

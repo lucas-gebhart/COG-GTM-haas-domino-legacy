@@ -1,0 +1,67 @@
+/*
+ * xsp.css - recreation of the dojo/tundra-era XPages widget styling that the real
+ * .ibmxspres/ resources would provide.  Purely local; nothing is fetched from IBM/HCL.
+ */
+
+body.xspView.tundra { background: #ffffff; }
+
+.xspInputFieldEditBox, .xspComboBox, .xspFileUpload, textarea.xspInputFieldEditBox {
+  border: 1px solid #b3b3b3;
+  border-top-color: #9b9b9b;
+  background: #ffffff;
+  padding: 2px 3px;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  color: #000000;
+}
+.xspInputFieldEditBox:focus, .xspComboBox:focus, textarea:focus {
+  outline: none;
+  border-color: #6c8bc9;
+  box-shadow: none;
+  background: #fffff5;
+}
+.xspComboBox {
+  padding: 1px 2px;
+  height: 20px;
+}
+.xspFileUpload { border: none; padding: 0; }
+
+.xspButtonCommand {
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  color: #000000;
+  background: #e0e0e0;
+  border: 1px solid #8f8f8f;
+  padding: 2px 10px;
+  margin: 1px 2px;
+  cursor: pointer;
+  border-radius: 0;
+}
+.xspButtonCommand:hover { background: #ececec; border-color: #6c8bc9; }
+.xspButtonCommand:active { background: #d0d0d0; }
+.xspButtonCommand.primaryButton { font-weight: bold; border-color: #4a6ea9; }
+
+.xspMessage, .xspMessageInfo {
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  margin: 4px 0;
+}
+.xspMessage { color: #cc0000; }
+.xspMessageInfo { color: #339933; }
+
+/* viewPanel emulation */
+.xspDataTableViewPanel, table.xspViewPanel {
+  border-collapse: collapse;
+  border: 1px solid #808080;
+}
+.xspPanelViewColumnHeader { background: #dfe6f3; font-weight: bold; }
+
+/* dojo dialog flavour for the status banner custom control */
+.ccStatusBanner {
+  border: 1px solid #99aacc;
+  background: #eef2f9;
+  padding: 4px 8px;
+  margin: 4px 0;
+}
+
+.compact td { padding: 1px 4px; }
