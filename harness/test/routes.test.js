@@ -233,6 +233,16 @@ test('GET every required heraldry.nsf page', async () => {
   assert.match(doc.text, /Document Number|DocumentNumber/);
   assert.match(doc.text, /RequestLine|Line/);
 
+  const withFile = h.app.store.db('heraldry.nsf').all('Request').find((d) => d.files.length);
+  const fileLink = new RegExp(`/heraldry\\.nsf/0/${withFile.unid}/\\$File/${withFile.files[0].name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+  const withFilePage = await anon.get(`/heraldry.nsf/0/${withFile.unid}?OpenDocument`);
+  assert.match(withFilePage.text, fileLink, 'a document with $FILE items links to each attachment');
+  const attachment = await anon.get(`/heraldry.nsf/0/${withFile.unid}/$File/${encodeURIComponent(withFile.files[0].name)}`);
+  assert.equal(attachment.status, 200);
+  assert.match(attachment.text, /attachment bytes are not part of the/);
+  const missingAttachment = await anon.get(`/heraldry.nsf/0/${withFile.unid}/$File/nope.pdf`);
+  assert.equal(missingAttachment.status, 404);
+
   const inquiry = await anon.get('/heraldry.nsf/StatusInquiry.xsp');
   assert.equal(inquiry.status, 200);
   assert.match(inquiry.text, /name="DocumentNumber"/);

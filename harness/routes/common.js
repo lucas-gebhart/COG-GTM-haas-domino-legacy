@@ -10,7 +10,7 @@ const path = require('node:path');
 const H = require('../lib/html');
 const A = require('../lib/agents');
 const { PERSONAS, hasRole } = require('../lib/personas');
-const { Router, dominoCommand, requireRole, cleanText, cleanName } = require('./router');
+const { Router, dominoCommand, requireRole, cleanText, cleanName, cleanUnid, splitDbPath } = require('./router');
 
 const router = new Router();
 
@@ -115,6 +115,31 @@ function safeRedirect(v) {
   }
   return '';
 }
+
+/* ---------------------------------------------------------------- /<db>/0/<unid>/$File/<name> */
+
+router.get((ctx) => {
+  const p = splitDbPath(ctx.pathname);
+  return p && p.parts.length === 4 && p.parts[0] === '0' && p.parts[2] === '$File';
+}, (ctx) => {
+  const p = splitDbPath(ctx.pathname);
+  const doc = ctx.app.store.db(p.db).get(cleanUnid(p.parts[1]));
+  const fileName = cleanText(p.parts[3], 120);
+  const file = doc ? doc.files.find((f) => f.name === fileName) : null;
+  if (!doc || !file) {
+    throw new A.AppError('Attachment not found', 404);
+  }
+  ctx.app.audit.write('attachment_read', { user: ctx.user.name, ip: ctx.ip, db: p.db, unid: doc.unid, file: file.name });
+  const content = `
+${H.infoBlock(`The DXL export records this <code>$FILE</code> item (${H.esc(file.name)}, ${file.size.toLocaleString()} bytes) on the document, but attachment bytes are not part of the design/data export the migration team received. On the production server this URL streams the file from the document's <code>$FILE</code> item.`)}
+<table class="dominoView" border="1" cellpadding="4" cellspacing="0">
+<tr><th>Attachment</th><td>${H.esc(file.name)}</td></tr>
+<tr><th>Size</th><td>${file.size.toLocaleString()} bytes</td></tr>
+<tr><th>Parent document</th><td><a href="/${H.attr(p.db)}/0/${H.attr(doc.unid)}?OpenDocument">${H.esc(doc.form)} ${H.esc(doc.unid)}</a></td></tr>
+<tr><th>Storage</th><td>hosttype=cdstorage, flags=storedindoc, compression=none</td></tr>
+</table>`;
+  return render(ctx, { db: p.db, title: `$File/${file.name}`, content, breadcrumb: [{ label: p.db === 'heraldry.nsf' ? 'Heraldry' : 'Veteran Medals', href: p.db === 'heraldry.nsf' ? '/heraldry.nsf/HeraldryHome.xsp' : '/vetmedals.nsf/CasesByStage?OpenView' }, { label: doc.form, href: `/${p.db}/0/${doc.unid}?OpenDocument` }, { label: `$File/${file.name}` }] });
+});
 
 /* ---------------------------------------------------------------- /design */
 
